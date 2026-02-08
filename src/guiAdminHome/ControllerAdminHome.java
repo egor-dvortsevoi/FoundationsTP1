@@ -1,5 +1,7 @@
 package guiAdminHome;
 
+import java.time.LocalDate;
+
 import database.Database;
 
 /*******
@@ -70,18 +72,29 @@ public class ControllerAdminHome {
 			return;
 		}
 		
+		// Retrieve and validate the deadline
+		LocalDate deadline = ViewAdminHome.datePicker_Deadline.getValue();
+		if (deadline != null && deadline.isBefore(LocalDate.now())) {
+			ViewAdminHome.alertEmailError.setContentText(
+					"The deadline cannot be in the past. Please select a future date.");
+			ViewAdminHome.alertEmailError.showAndWait();
+			return;
+		}
+		
 		// Inform the user that the invitation has been sent and display the invitation code
 		String theSelectedRole = (String) ViewAdminHome.combobox_SelectRole.getValue();
 		String invitationCode = theDatabase.generateInvitationCode(emailAddress,
-				theSelectedRole);
+				theSelectedRole, deadline);
+		String deadlineStr = (deadline != null) ? " (deadline: " + deadline + ")" : " (no deadline)";
 		String msg = "Code: " + invitationCode + " for role " + theSelectedRole + 
-				" was sent to: " + emailAddress;
+				" was sent to: " + emailAddress + deadlineStr;
 		System.out.println(msg);
 		ViewAdminHome.alertEmailSent.setContentText(msg);
 		ViewAdminHome.alertEmailSent.showAndWait();
 		
 		// Update the Admin Home pages status
 		ViewAdminHome.text_InvitationEmailAddress.setText("");
+		ViewAdminHome.datePicker_Deadline.setValue(null);
 		ViewAdminHome.label_NumberOfInvitations.setText("Number of outstanding invitations: " + 
 				theDatabase.getNumberOfInvitations());
 	}

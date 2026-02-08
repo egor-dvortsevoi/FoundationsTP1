@@ -9,6 +9,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Alert.AlertType;
@@ -88,13 +89,15 @@ public class ViewAdminHome {
 	protected static TextField text_InvitationEmailAddress = new TextField();
 	protected static ComboBox <String> combobox_SelectRole = new ComboBox <String>();
 	protected static String [] roles = {"Admin", "Role1", "Role2"};
+	protected static Label label_InvitationDeadline = new Label("Deadline");
+	protected static DatePicker datePicker_Deadline = new DatePicker();
 	protected static Button button_SendInvitation = new Button("Send Invitation");
 	protected static Alert alertEmailError = new Alert(AlertType.INFORMATION);
 	protected static Alert alertEmailSent = new Alert(AlertType.INFORMATION);
 	
 	
 	// This is a separator and it is used to partition the GUI for various tasks
-	private static Line line_Separator3 = new Line(20, 255, width-20, 255);
+	private static Line line_Separator3 = new Line(20, 285, width-20, 285);
 	
 	// GUI Area 4: This is the second of the two action item areas.  This provides a set of other
 	// admin buttons to use to perform other roles.  Many of these buttons are just stubs and an
@@ -241,6 +244,13 @@ public class ViewAdminHome {
 		alertEmailSent.setTitle("Invitation");
 		alertEmailSent.setHeaderText("Invitation was sent");
 		
+		// Deadline label and DatePicker for invitation expiration
+		setupLabelUI(label_InvitationDeadline, "Arial", 16, 80, Pos.BASELINE_LEFT, 20, 240);
+		datePicker_Deadline.setLayoutX(130);
+		datePicker_Deadline.setLayoutY(237);
+		datePicker_Deadline.setPrefWidth(180);
+		datePicker_Deadline.setPromptText("Select deadline");
+		
 		// Modify default pop up body for the email address error messages:
 		
 		alertEmailError.setTitle("Invalid Email Address");
@@ -250,22 +260,22 @@ public class ViewAdminHome {
 		setupButtonUI(button_SendInvitation, "Dialog", 16, 150, Pos.CENTER, 630, 205);
 		button_SendInvitation.setOnAction((_) -> {ControllerAdminHome.performInvitation(); });
 	
-		// GUI Area 4
-		setupButtonUI(button_ManageInvitations, "Dialog", 16, 250, Pos.CENTER, 20, 270);
+		// GUI Area 4 — shift buttons down to accommodate deadline row
+		setupButtonUI(button_ManageInvitations, "Dialog", 16, 250, Pos.CENTER, 20, 290);
 		button_ManageInvitations.setOnAction((_) -> 
 			{ControllerAdminHome.manageInvitations(); });
 	
-		setupButtonUI(button_SetOnetimePassword, "Dialog", 16, 250, Pos.CENTER, 20, 320);
+		setupButtonUI(button_SetOnetimePassword, "Dialog", 16, 250, Pos.CENTER, 20, 340);
 		button_SetOnetimePassword.setOnAction((_) -> 
 			{ControllerAdminHome.setOnetimePassword(); });
 
-		setupButtonUI(button_DeleteUser, "Dialog", 16, 250, Pos.CENTER, 20, 370);
+		setupButtonUI(button_DeleteUser, "Dialog", 16, 250, Pos.CENTER, 20, 390);
 		button_DeleteUser.setOnAction((_) -> {ControllerAdminHome.deleteUser(); });
 
-		setupButtonUI(button_ListUsers, "Dialog", 16, 250, Pos.CENTER, 20, 420);
+		setupButtonUI(button_ListUsers, "Dialog", 16, 250, Pos.CENTER, 20, 440);
 		button_ListUsers.setOnAction((_) -> {ControllerAdminHome.listUsers(); });
 
-		setupButtonUI(button_AddRemoveRoles, "Dialog", 16, 250, Pos.CENTER, 20, 470);
+		setupButtonUI(button_AddRemoveRoles, "Dialog", 16, 250, Pos.CENTER, 20, 490);
 		button_AddRemoveRoles.setOnAction((_) -> {ControllerAdminHome.addRemoveRoles(); });
 		
 		// GUI Area 5
@@ -284,7 +294,9 @@ public class ViewAdminHome {
     		line_Separator2,
     		label_Invitations, 
     		label_InvitationEmailAddress, text_InvitationEmailAddress,
-    		combobox_SelectRole, button_SendInvitation, line_Separator3,
+    		combobox_SelectRole, 
+    		label_InvitationDeadline, datePicker_Deadline,
+    		button_SendInvitation, line_Separator3,
     		button_ManageInvitations,
     		button_SetOnetimePassword,
     		button_DeleteUser,

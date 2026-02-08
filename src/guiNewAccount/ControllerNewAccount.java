@@ -62,6 +62,19 @@ public class ControllerNewAccount {
 	 */	
 	protected static void doCreateUser() {
 		
+		// Check if the invitation code has expired before proceeding
+		String invCode = ViewNewAccount.text_Invitation.getText();
+		if (theDatabase.isInvitationExpired(invCode)) {
+			ViewNewAccount.alertInvitationCodeIsInvalid.setHeaderText("Invitation Code Expired");
+			ViewNewAccount.alertInvitationCodeIsInvalid.setContentText(
+					"This invitation code has expired. Please request a new invitation.");
+			ViewNewAccount.alertInvitationCodeIsInvalid.showAndWait();
+			// Reset the alert text back for future use
+			ViewNewAccount.alertInvitationCodeIsInvalid.setHeaderText("The invitation code is not valid.");
+			ViewNewAccount.alertInvitationCodeIsInvalid.setContentText("Correct the code and try again.");
+			return;
+		}
+		
 		// Fetch the username and password. (We use the first of the two here, but we will validate
 		// that the two password fields are the same before we do anything with it.)
 		String username = ViewNewAccount.text_Username.getText();

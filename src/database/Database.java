@@ -5,6 +5,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -122,8 +123,16 @@ public class Database {
 	    String invitationCodesTable = "CREATE TABLE IF NOT EXISTS InvitationCodes ("
 	            + "code VARCHAR(10) PRIMARY KEY, "
 	    		+ "emailAddress VARCHAR(255), "
-	            + "role VARCHAR(10))";
+	            + "role VARCHAR(10), "
+	            + "deadline DATE)";
 	    statement.execute(invitationCodesTable);
+	    
+	    // Migration: add the deadline column if it does not already exist
+	    try {
+	        statement.execute("ALTER TABLE InvitationCodes ADD COLUMN IF NOT EXISTS deadline DATE");
+	    } catch (SQLException e) {
+	        // Column may already exist — ignore
+	    }
 	}
 
 
@@ -390,13 +399,36 @@ public class Database {
 	 */
 	// Generates a new invitation code and inserts it into the database.
 	public String generateInvitationCode(String emailAddress, String role) {
+		return generateInvitationCode(emailAddress, role, null);
+	}
+
+	/*******
+	 * <p> Method: String generateInvitationCode(String emailAddress, String role, LocalDate deadline) </p>
+	 * 
+	 * <p> Description: Given an email address, a role, and an optional deadline, this method
+	 * establishes an invitation code and adds a record to the InvitationCodes table.  When the
+	 * invitation code is used, the stored email address is used to establish the new user and the
+	 * record is removed from the table.</p>
+	 * 
+	 * @param emailAddress specifies the email address for this new user.
+	 * @param role specifies the role that this new user will play.
+	 * @param deadline specifies the expiration date for this invitation (may be null for no deadline).
+	 * 
+	 * @return the code of six characters so the new user can use it to securely setup an account.
+	 */
+	public String generateInvitationCode(String emailAddress, String role, LocalDate deadline) {
 	    String code = UUID.randomUUID().toString().substring(0, 6); // Generate a random 6-character code
-	    String query = "INSERT INTO InvitationCodes (code, emailaddress, role) VALUES (?, ?, ?)";
+	    String query = "INSERT INTO InvitationCodes (code, emailaddress, role, deadline) VALUES (?, ?, ?, ?)";
 
 	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
 	        pstmt.setString(1, code);
 	        pstmt.setString(2, emailAddress);
 	        pstmt.setString(3, role);
+	        if (deadline != null) {
+	            pstmt.setDate(4, java.sql.Date.valueOf(deadline));
+	        } else {
+	            pstmt.setNull(4, java.sql.Types.DATE);
+	        }
 	        pstmt.executeUpdate();
 	    } catch (SQLException e) {
 	        e.printStackTrace();
@@ -505,6 +537,38 @@ public class Database {
 	        e.printStackTrace();
 	    }
 		return "";
+	}
+	
+	
+	/*******
+	 * <p> Method: boolean isInvitationExpired(String code) </p>
+	 * 
+	 * <p> Description: Check if an invitation code has passed its deadline.</p>
+	 * 
+	 * @param code is the 6 character String invitation code
+	 *  
+	 * @return true if the invitation code is expired, false if it is still valid or has no deadline.
+	 * 
+	 */
+	public boolean isInvitationExpired(String code) {
+	    String query = "SELECT deadline FROM InvitationCodes WHERE code = ?";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setString(1, code);
+	        ResultSet rs = pstmt.executeQuery();
+	        if (rs.next()) {
+	            java.sql.Date deadline = rs.getDate("deadline");
+	            if (deadline != null) {
+	                // Expired if the deadline date is before today
+	                return deadline.toLocalDate().isBefore(LocalDate.now());
+	            }
+	            // No deadline set — treat as not expired
+	            return false;
+	        }
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	    // Code not found — treat as expired/invalid
+	    return true;
 	}
 	
 	
