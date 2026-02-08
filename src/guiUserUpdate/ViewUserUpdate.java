@@ -2,6 +2,8 @@ package guiUserUpdate;
 
 import java.util.Optional;
 
+
+
 import database.Database;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -12,6 +14,8 @@ import javafx.scene.layout.Pane;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import entityClasses.User;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
 
 /*******
  * <p> Title: ViewUserUpdate Class. </p>
@@ -316,14 +320,46 @@ public class ViewUserUpdate {
         setupLabelUI(label_EmailAddress, "Arial", 18, 190, Pos.BASELINE_RIGHT, 5, 400);
         setupLabelUI(label_CurrentEmailAddress, "Arial", 18, 260, Pos.BASELINE_LEFT, 200, 400);
         setupButtonUI(button_UpdateEmailAddress, "Dialog", 18, 275, Pos.CENTER, 500, 393);
-        button_UpdateEmailAddress.setOnAction((_) -> {result = dialogUpdateEmailAddresss.showAndWait();
-    		result.ifPresent(_ -> theDatabase.updateEmailAddress(theUser.getUserName(), result.get()));
-    		theDatabase.getUserAccountDetails(theUser.getUserName());
-    		String newEmail = theDatabase.getCurrentEmailAddress();
-           	theUser.setEmailAddress(newEmail);
-        	if (newEmail == null || newEmail.length() < 1)label_CurrentEmailAddress.setText("<none>");
-        	else label_CurrentEmailAddress.setText(newEmail);
- 			});
+        
+        
+        // Reformatted to make more readable
+        button_UpdateEmailAddress.setOnAction((_) -> {
+            // Get the input from the dialog
+            result = dialogUpdateEmailAddresss.showAndWait();
+
+            // Check if the user actually typed something and clicked OK
+            if (result.isPresent()) {
+                String emailInput = result.get();
+                
+                // Call the recognizer directly
+                String errorMsg = guiTools.EmailAddressRecognizer.checkEmailAddress(emailInput);
+
+                // If errorMsg is NOT empty, it means the email is invalid
+                if (!errorMsg.isEmpty()) {
+                    // Create a temporary alert to show the specific error message
+                    Alert errorAlert = new Alert(AlertType.ERROR);
+                    errorAlert.setTitle("Invalid Email Address");
+                    errorAlert.setHeaderText("The email provided is invalid");
+                    errorAlert.setContentText(errorMsg); // Display the specific error from the FSM
+                    errorAlert.showAndWait();
+                } 
+                else {
+                    // Proceed with the database update
+                    theDatabase.updateEmailAddress(theUser.getUserName(), emailInput);
+                    
+                    // Refresh the local user object
+                    theDatabase.getUserAccountDetails(theUser.getUserName());
+                    String newEmail = theDatabase.getCurrentEmailAddress();
+                    theUser.setEmailAddress(newEmail);
+                    
+                    // Update the label
+                    if (newEmail == null || newEmail.length() < 1) 
+                        label_CurrentEmailAddress.setText("<none>");
+                    else 
+                        label_CurrentEmailAddress.setText(newEmail);
+                }
+            }
+        });
         
         // Set up the button to proceed to this user's home page
         setupButtonUI(button_ProceedToUserHomePage, "Dialog", 18, 300, 
