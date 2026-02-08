@@ -1,0 +1,19 @@
+# Compiled class files
+bin/
+
+# Eclipse IDE
+.classpath
+.project
+.settings/
+
+# macOS
+.DS_Store
+
+# Build artifacts
+build.fxbuild
+*.class
+*.jar
+*.war
+
+# Java-specific
+hs_err_pid*
