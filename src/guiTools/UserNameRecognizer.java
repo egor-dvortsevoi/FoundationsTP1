@@ -144,11 +144,11 @@ public class UserNameRecognizer {
 					// Count the character
 					userNameSize++;
 				}
-				// . -> State 2
-				else if (currentChar == '.') {							// Check for /
+				// '.', '_', '-' -> State 2
+				else if (currentChar == '.' || currentChar == '_' || currentChar == '-') {
 					nextState = 2;
 					
-					// Count the .
+					// Count the special character
 					userNameSize++;
 				}				
 				// If it is none of those characters, the FSM halts
@@ -162,7 +162,7 @@ public class UserNameRecognizer {
 				break;			
 				
 			case 2: 
-				// State 2 deals with a character after a period in the name.
+				// State 2 deals with a character after a special character (., _, -) in the name.
 				
 				// A-Z, a-z, 0-9 -> State 1
 				if ((currentChar >= 'A' && currentChar <= 'Z' ) ||		// Check for A-Z
@@ -170,7 +170,7 @@ public class UserNameRecognizer {
 						(currentChar >= '0' && currentChar <= '9' )) {	// Check for 0-9
 					nextState = 1;
 					
-					// Count the odd digit
+					// Count the character
 					userNameSize++;
 					
 				}
@@ -243,7 +243,7 @@ public class UserNameRecognizer {
 			else if (currentCharNdx < input.length()) {
 				// There are characters remaining in the input, so the input is not valid
 				userNameRecognizerErrorMessage += 
-					"A UserName character may only contain the \n characters A-Z, a-z, 0-9.\n";
+					"A UserName character may only contain A-Z, a-z, 0-9, \nand '.', '_', '-' (not at the end).\n";
 				return userNameRecognizerErrorMessage;
 			}
 			else {
@@ -256,7 +256,7 @@ public class UserNameRecognizer {
 		case 2:
 			// State 2 is not a final state, so we can return a very specific error message
 			userNameRecognizerErrorMessage +=
-				"A UserName character after a period must be A-Z, a-z, 0-9.\n";
+				"A UserName cannot end with '.', '_', or '-'. \nThe next character must be A-Z, a-z, or 0-9.\n";
 			return userNameRecognizerErrorMessage;
 			
 		default:
