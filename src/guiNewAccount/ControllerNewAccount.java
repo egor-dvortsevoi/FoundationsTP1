@@ -63,7 +63,7 @@ public class ControllerNewAccount {
 	protected static void doCreateUser() {
 		
 		// Check if the invitation code has expired before proceeding
-		String invCode = ViewNewAccount.text_Invitation.getText();
+		String invCode = ViewNewAccount.theInvitationCode;
 		if (theDatabase.isInvitationExpired(invCode)) {
 			ViewNewAccount.alertInvitationCodeIsInvalid.setHeaderText("Invitation Code Expired");
 			ViewNewAccount.alertInvitationCodeIsInvalid.setContentText(

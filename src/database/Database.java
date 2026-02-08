@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import entityClasses.Post;
+import entityClasses.Reply;
 import entityClasses.User;
 
 /*******
@@ -133,6 +135,27 @@ public class Database {
 	    } catch (SQLException e) {
 	        // Column may already exist — ignore
 	    }
+	    
+	    // Create the posts table
+	    String postsTable = "CREATE TABLE IF NOT EXISTS postsDB ("
+	            + "id INT AUTO_INCREMENT PRIMARY KEY, "
+	            + "authorUsername VARCHAR(255), "
+	            + "threadName VARCHAR(255), "
+	            + "title VARCHAR(255), "
+	            + "content CLOB, "
+	            + "timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
+	            + "isDeleted BOOL DEFAULT FALSE)";
+	    statement.execute(postsTable);
+	    
+	    // Create the replies table
+	    String repliesTable = "CREATE TABLE IF NOT EXISTS repliesDB ("
+	            + "id INT AUTO_INCREMENT PRIMARY KEY, "
+	            + "postId INT, "
+	            + "authorUsername VARCHAR(255), "
+	            + "content CLOB, "
+	            + "timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
+	            + "FOREIGN KEY (postId) REFERENCES postsDB(id))";
+	    statement.execute(repliesTable);
 	}
 
 
@@ -1123,5 +1146,170 @@ public class Database {
 		} catch(SQLException se){ 
 			se.printStackTrace(); 
 		} 
+	}
+
+
+	// ========================================================================================
+	// Posts and Replies Methods
+	// ========================================================================================
+
+	/*******
+	 * <p> Method: void createPost(Post post) </p>
+	 * 
+	 * <p> Description: Inserts a new post into the postsDB table.</p>
+	 * 
+	 * @param post the Post object to insert
+	 */
+	public void createPost(Post post) {
+	    String query = "INSERT INTO postsDB (authorUsername, threadName, title, content) "
+	            + "VALUES (?, ?, ?, ?)";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setString(1, post.getAuthorUsername());
+	        pstmt.setString(2, post.getThreadName());
+	        pstmt.setString(3, post.getTitle());
+	        pstmt.setString(4, post.getContent());
+	        pstmt.executeUpdate();
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	}
+
+
+	/*******
+	 * <p> Method: void createReply(Reply reply) </p>
+	 * 
+	 * <p> Description: Inserts a new reply into the repliesDB table.</p>
+	 * 
+	 * @param reply the Reply object to insert
+	 */
+	public void createReply(Reply reply) {
+	    String query = "INSERT INTO repliesDB (postId, authorUsername, content) "
+	            + "VALUES (?, ?, ?)";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setInt(1, reply.getPostId());
+	        pstmt.setString(2, reply.getAuthorUsername());
+	        pstmt.setString(3, reply.getContent());
+	        pstmt.executeUpdate();
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	}
+
+
+	/*******
+	 * <p> Method: List&lt;Post&gt; getAllPosts() </p>
+	 * 
+	 * <p> Description: Retrieves all non-deleted posts ordered by timestamp descending (newest
+	 * first).</p>
+	 * 
+	 * @return a list of Post objects
+	 */
+	public List<Post> getAllPosts() {
+	    List<Post> posts = new ArrayList<>();
+	    String query = "SELECT * FROM postsDB WHERE isDeleted = FALSE ORDER BY timestamp DESC";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        ResultSet rs = pstmt.executeQuery();
+	        while (rs.next()) {
+	            Post p = new Post(
+	                rs.getInt("id"),
+	                rs.getString("authorUsername"),
+	                rs.getString("threadName"),
+	                rs.getString("title"),
+	                rs.getString("content"),
+	                rs.getTimestamp("timestamp"),
+	                rs.getBoolean("isDeleted")
+	            );
+	            posts.add(p);
+	        }
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	    return posts;
+	}
+
+
+	/*******
+	 * <p> Method: Post getPostById(int postId) </p>
+	 * 
+	 * <p> Description: Retrieves a single post by its id.</p>
+	 * 
+	 * @param postId the id of the post
+	 * @return the Post object, or null if not found
+	 */
+	public Post getPostById(int postId) {
+	    String query = "SELECT * FROM postsDB WHERE id = ?";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setInt(1, postId);
+	        ResultSet rs = pstmt.executeQuery();
+	        if (rs.next()) {
+	            return new Post(
+	                rs.getInt("id"),
+	                rs.getString("authorUsername"),
+	                rs.getString("threadName"),
+	                rs.getString("title"),
+	                rs.getString("content"),
+	                rs.getTimestamp("timestamp"),
+	                rs.getBoolean("isDeleted")
+	            );
+	        }
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	    return null;
+	}
+
+
+	/*******
+	 * <p> Method: List&lt;Reply&gt; getRepliesForPost(int postId) </p>
+	 * 
+	 * <p> Description: Retrieves all replies for a given post, ordered by timestamp ascending
+	 * (oldest first — chronological order).</p>
+	 * 
+	 * @param postId the id of the parent post
+	 * @return a list of Reply objects
+	 */
+	public List<Reply> getRepliesForPost(int postId) {
+	    List<Reply> replies = new ArrayList<>();
+	    String query = "SELECT * FROM repliesDB WHERE postId = ? ORDER BY timestamp ASC";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setInt(1, postId);
+	        ResultSet rs = pstmt.executeQuery();
+	        while (rs.next()) {
+	            Reply r = new Reply(
+	                rs.getInt("id"),
+	                rs.getInt("postId"),
+	                rs.getString("authorUsername"),
+	                rs.getString("content"),
+	                rs.getTimestamp("timestamp")
+	            );
+	            replies.add(r);
+	        }
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	    return replies;
+	}
+
+
+	/*******
+	 * <p> Method: int getReplyCountForPost(int postId) </p>
+	 * 
+	 * <p> Description: Returns the number of replies for a given post.</p>
+	 * 
+	 * @param postId the id of the parent post
+	 * @return the number of replies
+	 */
+	public int getReplyCountForPost(int postId) {
+	    String query = "SELECT COUNT(*) AS count FROM repliesDB WHERE postId = ?";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setInt(1, postId);
+	        ResultSet rs = pstmt.executeQuery();
+	        if (rs.next()) {
+	            return rs.getInt("count");
+	        }
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	    return 0;
 	}
 }

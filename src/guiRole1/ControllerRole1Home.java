@@ -1,13 +1,17 @@
 package guiRole1;
 
+import java.util.List;
+
+import database.Database;
+import entityClasses.Post;
+import entityClasses.Reply;
+
 
 /*******
  * <p> Title: ControllerRole1Home Class. </p>
  * 
  * <p> Description: The Java/FX-based Role 1 Home Page.  This class provides the controller
  * actions basic on the user's use of the JavaFX GUI widgets defined by the View class.
- * 
- * This page is a stub for establish future roles for the application.
  * 
  * The class has been written assuming that the View or the Model are the only class methods that
  * can invoke these methods.  This is why each has been declared at "protected".  Do not change any
@@ -18,7 +22,8 @@ package guiRole1;
  * @author Lynn Robert Carter
  * 
  * @version 1.00		2025-08-17 Initial version
- * @version 1.01		2025-09-16 Update Javadoc documentation *  
+ * @version 1.01		2025-09-16 Update Javadoc documentation
+ * @version 2.00		2026-02-08 Added post and reply functionality
  */
 
 public class ControllerRole1Home {
@@ -39,36 +44,114 @@ public class ControllerRole1Home {
 	public ControllerRole1Home() {
 	}
 
+	// Reference for the in-memory database so this package has access
+	private static Database theDatabase = applicationMain.FoundationsMain.database;
+
 	/**********
-	 * <p> Method: performUpdate() </p>
-	 * 
-	 * <p> Description: This method directs the user to the User Update Page so the user can change
-	 * the user account attributes. </p>
-	 * 
+	 * Refresh the list of posts displayed on the Role1 Home page.
+	 */
+	protected static void refreshPostList() {
+		ViewRole1Home.listView_Posts.getItems().clear();
+		List<Post> posts = theDatabase.getAllPosts();
+		ViewRole1Home.currentPosts = posts;
+		for (Post p : posts) {
+			int replyCount = theDatabase.getReplyCountForPost(p.getId());
+			String display = p.getTitle() + "  [" + p.getAuthorUsername() + "]"
+					+ "  (" + replyCount + " replies)";
+			if (p.getTimestamp() != null) {
+				display += "  - " + p.getTimestamp().toString();
+			}
+			ViewRole1Home.listView_Posts.getItems().add(display);
+		}
+	}
+
+	/**********
+	 * Submit a new post from the new post form.
+	 */
+	protected static void submitNewPost() {
+		String title = ViewRole1Home.text_NewPostTitle.getText().trim();
+		String thread = ViewRole1Home.text_NewPostThread.getText().trim();
+		String content = ViewRole1Home.text_NewPostContent.getText().trim();
+		
+		if (title.isEmpty()) {
+			ViewRole1Home.alertPostError.setContentText("Title cannot be empty.");
+			ViewRole1Home.alertPostError.showAndWait();
+			return;
+		}
+		if (content.isEmpty()) {
+			ViewRole1Home.alertPostError.setContentText("Content cannot be empty.");
+			ViewRole1Home.alertPostError.showAndWait();
+			return;
+		}
+		
+		Post post = new Post(ViewRole1Home.theUser.getUserName(), thread, title, content);
+		theDatabase.createPost(post);
+		
+		ViewRole1Home.alertPostSuccess.showAndWait();
+		ViewRole1Home.showNewPostForm(false);
+		refreshPostList();
+	}
+
+	/**********
+	 * View the currently selected post in the post list.
+	 */
+	protected static void viewSelectedPost() {
+		int selectedIndex = ViewRole1Home.listView_Posts.getSelectionModel().getSelectedIndex();
+		if (selectedIndex < 0 || ViewRole1Home.currentPosts == null 
+				|| selectedIndex >= ViewRole1Home.currentPosts.size()) {
+			ViewRole1Home.alertPostError.setContentText("Please select a post to view.");
+			ViewRole1Home.alertPostError.showAndWait();
+			return;
+		}
+		Post selectedPost = ViewRole1Home.currentPosts.get(selectedIndex);
+		// Re-fetch from DB to get latest data
+		Post freshPost = theDatabase.getPostById(selectedPost.getId());
+		if (freshPost == null) {
+			ViewRole1Home.alertPostError.setContentText("Post not found.");
+			ViewRole1Home.alertPostError.showAndWait();
+			return;
+		}
+		ViewPostDetail.displayPostDetail(ViewRole1Home.theStage, ViewRole1Home.theUser, freshPost);
+	}
+
+	/**********
+	 * Submit a reply from the post detail view.
+	 */
+	protected static void submitReply() {
+		String content = ViewPostDetail.text_ReplyContent.getText().trim();
+		if (content.isEmpty()) {
+			ViewRole1Home.alertPostError.setContentText("Reply cannot be empty.");
+			ViewRole1Home.alertPostError.showAndWait();
+			return;
+		}
+		
+		Reply reply = new Reply(
+				ViewPostDetail.thePost.getId(),
+				ViewPostDetail.theUser.getUserName(),
+				content
+		);
+		theDatabase.createReply(reply);
+		
+		ViewPostDetail.text_ReplyContent.setText("");
+		ViewPostDetail.refreshReplies();
+	}
+
+	/**********
+	 * Navigate to the User Update page.
 	 */
 	protected static void performUpdate () {
 		guiUserUpdate.ViewUserUpdate.displayUserUpdate(ViewRole1Home.theStage, ViewRole1Home.theUser);
 	}	
 
 	/**********
-	 * <p> Method: performLogout() </p>
-	 * 
-	 * <p> Description: This method logs out the current user and proceeds to the normal login
-	 * page where existing users can log in or potential new users with a invitation code can
-	 * start the process of setting up an account. </p>
-	 * 
+	 * Log out and return to the login page.
 	 */
 	protected static void performLogout() {
 		guiUserLogin.ViewUserLogin.displayUserLogin(ViewRole1Home.theStage);
 	}
 	
 	/**********
-	 * <p> Method: performQuit() </p>
-	 * 
-	 * <p> Description: This method terminates the execution of the program.  It leaves the
-	 * database in a state where the normal login page will be displayed when the application is
-	 * restarted.</p>
-	 * 
+	 * Quit the application.
 	 */	
 	protected static void performQuit() {
 		System.exit(0);
