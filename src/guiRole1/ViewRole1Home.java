@@ -23,7 +23,7 @@ import entityClasses.User;
 /*******
  * <p> Title: GUIReviewerHomePage Class. </p>
  * 
- * <p> Description: The Java/FX-based Role1 Home Page.  The page is a stub for some role needed for
+ * <p> Description: The Java/FX-based Student Home Page.  The page is a stub for some role needed for
  * the application.  The widgets on this page are likely the minimum number and kind for other role
  * pages that may be needed.</p>
  * 
@@ -105,7 +105,7 @@ public class ViewRole1Home {
 	
 
 	private static Scene theViewRole1HomeScene;	// The shared Scene each invocation populates
-	protected static final int theRole = 2;		// Admin: 1; Role1: 2; Role2: 3
+	protected static final int theRole = 2;		// Admin: 1; Student: 2; Staff: 3
 
 	/*-*******************************************************************************************
 
@@ -118,7 +118,7 @@ public class ViewRole1Home {
 	 * <p> Method: displayRole1Home(Stage ps, User user) </p>
 	 * 
 	 * <p> Description: This method is the single entry point from outside this package to cause
-	 * the Role1 Home page to be displayed.
+	 * the Student Home page to be displayed.
 	 * 
 	 * It first sets up every shared attributes so we don't have to pass parameters.
 	 * 
@@ -158,7 +158,7 @@ public class ViewRole1Home {
 		showNewPostForm(false);
 				
 		// Set the title for the window, display the page, and wait for the Admin to do something
-		theStage.setTitle("CSE 360 Foundations: Role1 Home Page");
+		theStage.setTitle("CSE 360 Foundations: Student Home Page");
 		theStage.setScene(theViewRole1HomeScene);
 		theStage.show();
 	}
@@ -185,7 +185,7 @@ public class ViewRole1Home {
 		// Populate the window with the title and other common widgets and set their static state
 		
 		// GUI Area 1
-		label_PageTitle.setText("Role1 Home Page");
+		label_PageTitle.setText("Student Home Page");
 		setupLabelUI(label_PageTitle, "Arial", 28, width, Pos.CENTER, 0, 5);
 
 		label_UserDetails.setText("User: " + theUser.getUserName());

@@ -16,7 +16,7 @@ import entityClasses.User;
 /*******
  * <p> Title: ViewRole2Home Class. </p>
  * 
- * <p> Description: The Java/FX-based Role2 Home Page.  The page is a stub for some role needed for
+ * <p> Description: The Java/FX-based Staff Home Page.  The page is a stub for some role needed for
  * the application.  The widgets on this page are likely the minimum number and kind for other role
  * pages that may be needed.</p>
  * 
@@ -80,7 +80,7 @@ public class ViewRole2Home {
 	protected static User theUser;				// The current logged in User
 	
 	private static Scene theRole2HomeScene;		// The shared Scene each invocation populates
-	protected static final int theRole = 3;		// Admin: 1; Role1: 2; Role2: 3
+	protected static final int theRole = 3;		// Admin: 1; Student: 2; Staff: 3
 
 	/*-*******************************************************************************************
 
@@ -92,7 +92,7 @@ public class ViewRole2Home {
 	 * <p> Method: displayRole2Home(Stage ps, User user) </p>
 	 * 
 	 * <p> Description: This method is the single entry point from outside this package to cause
-	 * the Role2 Home page to be displayed.
+	 * the Staff Home page to be displayed.
 	 * 
 	 * It first sets up every shared attributes so we don't have to pass parameters.
 	 * 
@@ -126,7 +126,7 @@ public class ViewRole2Home {
 		label_UserDetails.setText("User: " + theUser.getUserName());// Set the username
 
 		// Set the title for the window, display the page, and wait for the Admin to do something
-		theStage.setTitle("CSE 360 Foundations: Role2 Home Page");
+		theStage.setTitle("CSE 360 Foundations: Staff Home Page");
 		theStage.setScene(theRole2HomeScene);						// Set this page onto the stage
 		theStage.show();											// Display it to the user
 	}
@@ -153,7 +153,7 @@ public class ViewRole2Home {
 		// Populate the window with the title and other common widgets and set their static state
 		
 		// GUI Area 1
-		label_PageTitle.setText("Role2 Home Page");
+		label_PageTitle.setText("Staff Home Page");
 		setupLabelUI(label_PageTitle, "Arial", 28, width, Pos.CENTER, 0, 5);
 
 		label_UserDetails.setText("User: " + theUser.getUserName());

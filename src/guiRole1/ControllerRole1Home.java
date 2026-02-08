@@ -48,7 +48,7 @@ public class ControllerRole1Home {
 	private static Database theDatabase = applicationMain.FoundationsMain.database;
 
 	/**********
-	 * Refresh the list of posts displayed on the Role1 Home page.
+	 * Refresh the list of posts displayed on the Student Home page.
 	 */
 	protected static void refreshPostList() {
 		ViewRole1Home.listView_Posts.getItems().clear();
