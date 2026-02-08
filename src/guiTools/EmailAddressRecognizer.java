@@ -9,6 +9,18 @@ public class EmailAddressRecognizer {
 	 * diagram into an executable Java program using the Email Address Recognizer. The code 
 	 * detailed design is based on a while loop with a select list</p>
 	 * 
+	 * <p> The email address must satisfy:
+	 *     Local address:
+	 *       - 3-16 characters
+	 *       - Only alphanumeric characters can be used (except "_", ".", "-")
+	 *       - "_", ".", "-" characters must be between alphanumeric characters
+	 *       - Cannot end with "_", ".", "-" characters before the "@" separator
+	 *     The "@" symbol can be used once to separate local from domain
+	 *     Domain address:
+	 *       - 3-16 characters
+	 *       - Only alphanumeric characters can be used (except "_", ".", "-")
+	 * </p>
+	 * 
 	 * <p> Copyright: Lynn Robert Carter © 2022 </p>
 	 * 
 	 * @author Lynn Robert Carter
@@ -20,6 +32,8 @@ public class EmailAddressRecognizer {
 	 * @version 3.00		2022-03-22	Adjusted to clean up the code and resolving alignment
 	 * 										issues with the design and to correct the issue
 	 * 										with an empty email address
+	 * @version 4.00		2026-02-08	Updated to enforce 3-16 char limits for local and domain,
+	 * 										and support "_", "-" in local part
 	 * 
 	 */
 
@@ -41,7 +55,8 @@ public class EmailAddressRecognizer {
 	private static int currentCharNdx;					// The index of the current character
 	private static boolean running;						// The flag that specifies if the FSM is 
 														// running
-	private static int domainPartCounter = 0;			// A domain name may not exceed 63 characters
+	private static int localPartSize = 0;				// Track local part length
+	private static int domainPartSize = 0;				// Track domain part length
 
 	/**********
 	 * This private method display the input line and then on a line under it displays an up arrow
@@ -70,7 +85,7 @@ public class EmailAddressRecognizer {
 			System.out.println(((state > 99) ? " " : (state > 9) ? "  " : "   ") + state + 
 					((finalState) ? "       F   " : "           ") + "  " + currentChar + " " + 
 					((nextState > 99) ? "" : (nextState > 9) || (nextState == -1) ? "   " : "    ") + 
-					nextState + "     " + domainPartCounter);
+					nextState + "     L:" + localPartSize + " D:" + domainPartSize);
 	}
 
 	private static void moveToNextCharacter() {
@@ -108,17 +123,16 @@ public class EmailAddressRecognizer {
 		// Let's ensure there is input
 		if (input.length() <= 0) {
 			emailAddressErrorMessage = "There was no email address found.\n";
-			return emailAddressErrorMessage + displayInput(input, 0);
+			return emailAddressErrorMessage;
 		}
 		currentChar = input.charAt(0);		// The current character from the above indexed position
 
-		// Let's ensure the address is not too long
-		if (input.length() > 255) {
-			emailAddressErrorMessage = "A valid email address must be no more than 255 characters.\n";
-			return emailAddressErrorMessage + displayInput(input, 255);
-		}
 		running = true;						// Start the loop
-		System.out.println("\nCurrent Final Input  Next  DomainName\nState   State Char  State  Size");
+		System.out.println("\nCurrent Final Input  Next  Local/Domain\nState   State Char  State  Size");
+
+		// Initialize size counters
+		localPartSize = 0;
+		domainPartSize = 0;
 
 		// The Finite State Machines continues until the end of the input is reached or at some 
 		// state the current character does not match any valid transition to a next state
@@ -130,14 +144,13 @@ public class EmailAddressRecognizer {
 			
 			switch (state) {
 			case 0: 
-				// State 0 has just 1 valid transition.
-				// The current character is must be checked against 62 options. If any are matched
-				// the FSM must go to state 1
-				// The first and the second check for an alphabet character the third a numeric
+				// State 0: Start of local part or after a separator in the local part.
+				// Expects an alphanumeric character.
 				if ((currentChar >= 'A' && currentChar <= 'Z')|| 		// Upper case
 						(currentChar >= 'a' && currentChar <= 'z') ||	// Lower case
 						(currentChar >= '0' && currentChar <= '9')) {	// Digit
-					nextState = 1; // Assuming LPChar is alphanumeric
+					nextState = 1;
+					localPartSize++;
 				}
 								
 				// If it is none of those characters, the FSM halts
@@ -145,88 +158,117 @@ public class EmailAddressRecognizer {
 					running = false;
 				}
 				
+				// If local part is too large, stop
+				if (localPartSize > 16) running = false;
+				
 				break;				
-				// The execution of this state is finished
 			
 			case 1: 
-				// State 1 has three valid transitions.
-				// The currentChar is checked against 3 potential state transition conditionals:
-				// Alphanumeric characters stay in state 1
-				// A period transitions back to state 0
-				// An @ transitions to state 2
+				// State 1: In local part, on an alphanumeric character.
+				// Can receive: alphanumeric (stay), ".", "_", "-" (go to state 2), "@" (go to state 3)
 				if ((currentChar >= 'A' && currentChar <= 'Z')|| 		// Upper case
 						(currentChar >= 'a' && currentChar <= 'z') ||	// Lower case
 						(currentChar >= '0' && currentChar <= '9')) {	// Digit
-					nextState = 1; // Assuming LPChar is alphanumeric
+					nextState = 1;
+					localPartSize++;
 				}
 				
-				else if (currentChar == '.') {
-					nextState = 0;
+				else if (currentChar == '.' || currentChar == '_' || currentChar == '-') {
+					nextState = 2;
+					localPartSize++;
 				}
 				
 				else if (currentChar == '@') {
-					nextState = 2;
+					nextState = 3;
 				}
 				else {
 					running = false;
 				}
-				break;
 				
-				// The execution of this state is finished
+				// If local part is too large, stop
+				if (localPartSize > 16) running = false;
+				
+				break;
 							
 			case 2: 
-				// State 2 has one valid transition.
-				
+				// State 2: After a separator (".", "_", "-") in the local part.
+				// Expects an alphanumeric character.
 				if ((currentChar >= 'A' && currentChar <= 'Z')|| 		// Upper case
 						(currentChar >= 'a' && currentChar <= 'z') ||	// Lower case
 						(currentChar >= '0' && currentChar <= '9')) {	// Digit
-					nextState = 3; // Assuming DPChar is alphanumeric
+					nextState = 1;
+					localPartSize++;
 				}
 				
 				else {
 					running = false;
 				}
 
-				// The execution of this state is finished
+				// If local part is too large, stop
+				if (localPartSize > 16) running = false;
+
+				break;
+
+			case 3: 
+				// State 3: Start of domain part or after a separator in the domain.
+				// Expects an alphanumeric character.
+				if ((currentChar >= 'A' && currentChar <= 'Z')|| 		// Upper case
+						(currentChar >= 'a' && currentChar <= 'z') ||	// Lower case
+						(currentChar >= '0' && currentChar <= '9')) {	// Digit
+					nextState = 4;
+					domainPartSize++;
+				}
+				
+				else {
+					running = false;
+				}
+
+				// If domain part is too large, stop
+				if (domainPartSize > 16) running = false;
+
 				break;
 	
-			case 3:
-				// State 3 has three valid transition.
-				
+			case 4:
+				// State 4: In domain part, on an alphanumeric character. FINAL STATE.
+				// Can receive: alphanumeric (stay), ".", "_", "-" (go to state 5)
 				if ((currentChar >= 'A' && currentChar <= 'Z')|| 		// Upper case
 						(currentChar >= 'a' && currentChar <= 'z') ||	// Lower case
 						(currentChar >= '0' && currentChar <= '9')) {	// Digit
-					nextState = 3; // Assuming DPChar is alphanumeric
-				}
-				
-				else if (currentChar == '.') {
-					nextState = 2;
-				}
-				
-				else if (currentChar == '-') {
 					nextState = 4;
+					domainPartSize++;
 				}
-				else {
-					running = false; // End of line is reached if input is empty or failure if not
-				}
-
-				// The execution of this state is finished
-				break;
-
-			case 4: 
-				// State 4 has one valid transition.
-
-				if ((currentChar >= 'A' && currentChar <= 'Z')|| 		// Upper case
-						(currentChar >= 'a' && currentChar <= 'z') ||	// Lower case
-						(currentChar >= '0' && currentChar <= '9')) {	// Digit
-					nextState = 3; // Assuming DPChar is alphanumeric
+				
+				else if (currentChar == '.' || currentChar == '_' || currentChar == '-') {
+					nextState = 5;
+					domainPartSize++;
 				}
 				
 				else {
 					running = false;
 				}
 
-				// The execution of this state is finished
+				// If domain part is too large, stop
+				if (domainPartSize > 16) running = false;
+
+				break;
+
+			case 5: 
+				// State 5: After a separator in the domain part.
+				// Expects an alphanumeric character.
+				if ((currentChar >= 'A' && currentChar <= 'Z')|| 		// Upper case
+						(currentChar >= 'a' && currentChar <= 'z') ||	// Lower case
+						(currentChar >= '0' && currentChar <= '9')) {	// Digit
+					nextState = 4;
+					domainPartSize++;
+				}
+				
+				else {
+					running = false;
+				}
+
+				// If domain part is too large, stop
+				if (domainPartSize > 16) running = false;
+
 				break;
 
 			}
@@ -242,6 +284,10 @@ public class EmailAddressRecognizer {
 				// Move to the next state
 				state = nextState;
 				nextState = -1;
+				
+				// Set final state flag
+				if (state == 4) finalState = true;
+				else finalState = false;
 			}
 			// Should the FSM get here, the loop starts again
 
@@ -259,34 +305,54 @@ public class EmailAddressRecognizer {
 		// user experience.
 		switch (state) {
 		case 0:
-			// State 0 is not a final state, so we can return a very specific error message
-			emailAddressIndexofError = currentCharNdx;		// Copy the index of the current character;
-			emailAddressErrorMessage = "First character or character after period must be alphanumberic.\n";
+			// State 0 is not a final state
+			emailAddressIndexofError = currentCharNdx;
+			emailAddressErrorMessage = "First character or character after a separator must be alphanumeric.\n";
 			return emailAddressErrorMessage;
 
 		case 1:
-			// State 1 is not a final state, so we can return a very specific error message
-
-			emailAddressIndexofError = currentCharNdx;		// Copy the index of the current character;
-			emailAddressErrorMessage = "Local portion of Email Address must be alphanumberic, a period, or an @.\n";
+			// State 1 is not a final state (no @ seen yet, missing domain)
+			emailAddressIndexofError = currentCharNdx;
+			if (localPartSize > 16) {
+				emailAddressErrorMessage = "The local portion of the email address must be no more than 16 characters.\n";
+			} else {
+				emailAddressErrorMessage = "Local portion must be alphanumeric, '.', '_', '-', or '@'.\n";
+			}
 			return emailAddressErrorMessage;
 
 		case 2:
-			// State 2 is not a final state, so we can return a very specific error message
-						
-			emailAddressIndexofError = currentCharNdx;		// Copy the index of the current character;
-			emailAddressErrorMessage = "Domain portion of Email Address must begin with an alphanumberic character.\n";
+			// State 2 is not a final state (separator at end of local part before @)
+			emailAddressIndexofError = currentCharNdx;
+			emailAddressErrorMessage = "Cannot end local portion with '.', '_', or '-'. The next character must be alphanumeric.\n";
 			return emailAddressErrorMessage;
 
 		case 3:
-			// State 3 is a Final State, so this is not an error if the input is empty, otherwise
-			// we can return a very specific error message.
+			// State 3 is not a final state (@ seen but no domain chars yet)
+			emailAddressIndexofError = currentCharNdx;
+			emailAddressErrorMessage = "Domain portion must begin with an alphanumeric character.\n";
+			return emailAddressErrorMessage;
 
-			if (currentCharNdx<input.length()) {
-				// If not all of the string has been consumed, we point to the current character
-				// in the input line and specify what that character must be in order to move
-				// forward.
-				emailAddressIndexofError = currentCharNdx;		// Copy the index of the current character;
+		case 4:
+			// State 4 is a Final State. Check length requirements.
+			if (localPartSize < 3) {
+				emailAddressErrorMessage = "The local portion of the email address must have at least 3 characters.\n";
+				return emailAddressErrorMessage;
+			}
+			if (localPartSize > 16) {
+				emailAddressErrorMessage = "The local portion of the email address must be no more than 16 characters.\n";
+				return emailAddressErrorMessage;
+			}
+			if (domainPartSize < 3) {
+				emailAddressErrorMessage = "The domain portion of the email address must have at least 3 characters.\n";
+				return emailAddressErrorMessage;
+			}
+			if (domainPartSize > 16) {
+				emailAddressErrorMessage = "The domain portion of the email address must be no more than 16 characters.\n";
+				return emailAddressErrorMessage;
+			}
+
+			if (currentCharNdx < input.length()) {
+				emailAddressIndexofError = currentCharNdx;
 				emailAddressErrorMessage = "This must be the end of the input.\n";
 				return emailAddressErrorMessage + displayInput(input, currentCharNdx);
 			}
@@ -297,11 +363,10 @@ public class EmailAddressRecognizer {
 				return emailAddressErrorMessage;
 			}
 
-		case 4:
-			// State 4 is not a final state, so we can return a very specific error message. 
-
-			emailAddressIndexofError = currentCharNdx;		// Copy the index of the current character;
-			emailAddressErrorMessage = "Dashes must be between alphanumberic characters.\n";
+		case 5:
+			// State 5 is not a final state (separator at end of domain part)
+			emailAddressIndexofError = currentCharNdx;
+			emailAddressErrorMessage = "Separators in the domain must be between alphanumeric characters.\n";
 			return emailAddressErrorMessage;
 
 		default:

@@ -100,7 +100,21 @@ public class ControllerNewAccount {
 		return;
 		}
 				
-		// else, continue as normal
+		// Validate invitation code format (errors hidden from user)
+		String invCodeInput = ViewNewAccount.theInvitationCode;
+		String invCodeValidation = guiTools.InvitationCodeRecognizer.checkForValidInvitationCode(invCodeInput);
+		if (!invCodeValidation.isEmpty()) {
+			ViewNewAccount.alertInvitationCodeIsInvalid.showAndWait();
+			return;
+		}
+
+		// Validate password format
+		String passwordValidation = guiTools.PasswordRecognizer.checkForValidPassword(password);
+		if (!passwordValidation.isEmpty()) {
+			ViewNewAccount.alertPasswordError.setContentText(passwordValidation);
+			ViewNewAccount.alertPasswordError.showAndWait();
+			return;
+		}
 
 		// Make sure the two passwords are the same.	
 		if (ViewNewAccount.text_Password1.getText().

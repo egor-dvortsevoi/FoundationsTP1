@@ -681,6 +681,26 @@ public class Database {
 	    }
 	}
 
+	/*******
+	 * <p> Method: void updatePassword(String username, String password) </p>
+	 *
+	 * <p> Description: Update the password for the specified user.</p>
+	 *
+	 * @param username is the username of the user
+	 * @param password is the new password for the user
+	 */
+	public void updatePassword(String username, String password) {
+	    String query = "UPDATE userDB SET password = ? WHERE username = ?";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setString(1, password);
+	        pstmt.setString(2, username);
+	        pstmt.executeUpdate();
+	        currentPassword = password;
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	}
+
 	
 	/*******
 	 * <p> Method: String getMiddleName(String username) </p>

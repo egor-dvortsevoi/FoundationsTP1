@@ -114,7 +114,12 @@ public class ControllerFirstAdmin {
     		return;
     	}
 		
-		// else, continue as normal
+		// Validate password format
+		String passwordValidation = guiTools.PasswordRecognizer.checkForValidPassword(adminPassword1);
+		if (!passwordValidation.isEmpty()) {
+			ViewFirstAdmin.label_PasswordsDoNotMatch.setText("Invalid Password: " + passwordValidation);
+			return;
+		}
 		
 		// Make sure the two passwords are the same
 		if (adminPassword1.compareTo(adminPassword2) == 0) {

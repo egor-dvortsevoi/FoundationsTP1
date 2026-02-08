@@ -64,6 +64,9 @@ public class ViewNewAccount {
 	// Username input validation error
 	protected static Alert alertUsernameError = new Alert(AlertType.INFORMATION);
 	
+	// Password input validation error
+	protected static Alert alertPasswordError = new Alert(AlertType.INFORMATION);
+	
     protected static Button button_Quit = new Button("Quit");
 
 	// These attributes are used to configure the page and populate it with this user's information
@@ -197,6 +200,10 @@ public class ViewNewAccount {
 		// If the username input is not valid, this alert dialog will tell the user
 		alertUsernameError.setTitle("Username Error");
 		alertUsernameError.setHeaderText("Invalid Username Format: ");
+		
+		// If the password input is not valid, this alert dialog will tell the user
+		alertPasswordError.setTitle("Password Error");
+		alertPasswordError.setHeaderText("Invalid Password Format");
 
         // Set up the account creation and login
         setupButtonUI(button_UserSetup, "Dialog", 18, 200, Pos.CENTER, 475, 210);

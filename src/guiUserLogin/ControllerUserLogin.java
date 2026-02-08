@@ -74,16 +74,23 @@ public class ControllerUserLogin {
     	// If the string doesn't return empty, then provide the error text to the login page GUI
     	if (!validationOutput.isEmpty()) {
     		
-    		// ViewUserLogin.alertUsernamePasswordError.setContentText("Invalid Username Format: " + validationOutput);
-    		// ViewUserLogin.alertUsernamePasswordError.showAndWait();
-    		// Commented out to avoid describing username rules to threat actors
-    		ViewUserLogin.alertUsernamePasswordError.setContentText(
-    				"Incorrect username/password. Try again!");
+    		// Errors are hidden from the user - show generic message
+    		ViewUserLogin.alertUsernamePasswordError.setContentText("Incorrect username/password. Try again!");
     		ViewUserLogin.alertUsernamePasswordError.showAndWait();
     		
     		return;
     	}
     	// If validationOutput is empty, then continue as normal
+    	
+    	// Validate password format (errors are hidden from the user)
+    	String passwordValidation = guiTools.PasswordRecognizer.checkForValidPassword(password);
+    	if (!passwordValidation.isEmpty()) {
+    		// Errors are hidden from the user - show generic message
+    		ViewUserLogin.alertUsernamePasswordError.setContentText(
+    				"Incorrect username/password. Try again!");
+    		ViewUserLogin.alertUsernamePasswordError.showAndWait();
+    		return;
+    	}
     	
 		// Fetch the user and verify the username
      	if (theDatabase.getUserAccountDetails(username) == false) {
@@ -157,6 +164,14 @@ public class ControllerUserLogin {
 	 * 
 	 */
 	protected static void doSetupAccount(Stage theStage, String invitationCode) {
+		// Validate invitation code format before proceeding (errors hidden from user)
+		String invCodeValidation = guiTools.InvitationCodeRecognizer.checkForValidInvitationCode(invitationCode);
+		if (!invCodeValidation.isEmpty()) {
+			// Show generic error - don't reveal format rules
+			ViewUserLogin.alertUsernamePasswordError.setContentText("The invitation code is not valid.");
+			ViewUserLogin.alertUsernamePasswordError.showAndWait();
+			return;
+		}
 		guiNewAccount.ViewNewAccount.displayNewAccount(theStage, invitationCode);
 	}
 
