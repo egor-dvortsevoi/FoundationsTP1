@@ -92,6 +92,7 @@ public class ViewAdminHome {
 	protected static Alert alertEmailError = new Alert(AlertType.INFORMATION);
 	protected static Alert alertEmailSent = new Alert(AlertType.INFORMATION);
 	
+	
 	// This is a separator and it is used to partition the GUI for various tasks
 	private static Line line_Separator3 = new Line(20, 255, width-20, 255);
 	
@@ -239,7 +240,13 @@ public class ViewAdminHome {
 		combobox_SelectRole.getSelectionModel().select(0);
 		alertEmailSent.setTitle("Invitation");
 		alertEmailSent.setHeaderText("Invitation was sent");
-
+		
+		// Modify default pop up body for the email address error messages:
+		
+		alertEmailError.setTitle("Invalid Email Address");
+		alertEmailError.setHeaderText(null); // Remove header
+		alertEmailError.setResizable(true);
+		
 		setupButtonUI(button_SendInvitation, "Dialog", 16, 150, Pos.CENTER, 630, 205);
 		button_SendInvitation.setOnAction((_) -> {ControllerAdminHome.performInvitation(); });
 	

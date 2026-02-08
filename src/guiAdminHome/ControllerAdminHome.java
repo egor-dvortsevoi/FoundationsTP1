@@ -178,11 +178,20 @@ public class ControllerAdminHome {
 	 * @param emailAddress	This String holds what is expected to be an email address
 	 */
 	protected static boolean invalidEmailAddress(String emailAddress) {
+		
 		if (emailAddress.length() == 0) {
 			ViewAdminHome.alertEmailError.setContentText(
 					"Correct the email address and try again.");
 			ViewAdminHome.alertEmailError.showAndWait();
 			return true;
+		}
+		else { // Use checkEmailAdress from EmailAdressRecognizer to determine validity of email address
+			String validationOutput = guiTools.EmailAddressRecognizer.checkEmailAddress(emailAddress);
+			if (!validationOutput.isEmpty()) {
+				ViewAdminHome.alertEmailError.setContentText("Email Adress Error: " + validationOutput);
+				ViewAdminHome.alertEmailError.showAndWait();
+				return true;
+			}
 		}
 		return false;
 	}
