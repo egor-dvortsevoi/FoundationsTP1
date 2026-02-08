@@ -1,4 +1,4 @@
-package guiRole1;
+package guiStudent;
 
 import java.util.List;
 
@@ -8,9 +8,9 @@ import entityClasses.Reply;
 
 
 /*******
- * <p> Title: ControllerRole1Home Class. </p>
+ * <p> Title: ControllerStudentHome Class. </p>
  * 
- * <p> Description: The Java/FX-based Role 1 Home Page.  This class provides the controller
+ * <p> Description: The Java/FX-based Student Home Page.  This class provides the controller
  * actions basic on the user's use of the JavaFX GUI widgets defined by the View class.
  * 
  * The class has been written assuming that the View or the Model are the only class methods that
@@ -26,7 +26,7 @@ import entityClasses.Reply;
  * @version 2.00		2026-02-08 Added post and reply functionality
  */
 
-public class ControllerRole1Home {
+public class ControllerStudentHome {
 
 	/*-*******************************************************************************************
 
@@ -41,7 +41,7 @@ public class ControllerRole1Home {
 	/**
 	 * Default constructor is not used.
 	 */
-	public ControllerRole1Home() {
+	public ControllerStudentHome() {
 	}
 
 	// Reference for the in-memory database so this package has access
@@ -51,9 +51,9 @@ public class ControllerRole1Home {
 	 * Refresh the list of posts displayed on the Student Home page.
 	 */
 	protected static void refreshPostList() {
-		ViewRole1Home.listView_Posts.getItems().clear();
+		ViewStudentHome.listView_Posts.getItems().clear();
 		List<Post> posts = theDatabase.getAllPosts();
-		ViewRole1Home.currentPosts = posts;
+		ViewStudentHome.currentPosts = posts;
 		for (Post p : posts) {
 			int replyCount = theDatabase.getReplyCountForPost(p.getId());
 			String display = p.getTitle() + "  [" + p.getAuthorUsername() + "]"
@@ -61,7 +61,7 @@ public class ControllerRole1Home {
 			if (p.getTimestamp() != null) {
 				display += "  - " + p.getTimestamp().toString();
 			}
-			ViewRole1Home.listView_Posts.getItems().add(display);
+			ViewStudentHome.listView_Posts.getItems().add(display);
 		}
 	}
 
@@ -69,26 +69,26 @@ public class ControllerRole1Home {
 	 * Submit a new post from the new post form.
 	 */
 	protected static void submitNewPost() {
-		String title = ViewRole1Home.text_NewPostTitle.getText().trim();
-		String thread = ViewRole1Home.text_NewPostThread.getText().trim();
-		String content = ViewRole1Home.text_NewPostContent.getText().trim();
+		String title = ViewStudentHome.text_NewPostTitle.getText().trim();
+		String thread = ViewStudentHome.text_NewPostThread.getText().trim();
+		String content = ViewStudentHome.text_NewPostContent.getText().trim();
 		
 		if (title.isEmpty()) {
-			ViewRole1Home.alertPostError.setContentText("Title cannot be empty.");
-			ViewRole1Home.alertPostError.showAndWait();
+			ViewStudentHome.alertPostError.setContentText("Title cannot be empty.");
+			ViewStudentHome.alertPostError.showAndWait();
 			return;
 		}
 		if (content.isEmpty()) {
-			ViewRole1Home.alertPostError.setContentText("Content cannot be empty.");
-			ViewRole1Home.alertPostError.showAndWait();
+			ViewStudentHome.alertPostError.setContentText("Content cannot be empty.");
+			ViewStudentHome.alertPostError.showAndWait();
 			return;
 		}
 		
-		Post post = new Post(ViewRole1Home.theUser.getUserName(), thread, title, content);
+		Post post = new Post(ViewStudentHome.theUser.getUserName(), thread, title, content);
 		theDatabase.createPost(post);
 		
-		ViewRole1Home.alertPostSuccess.showAndWait();
-		ViewRole1Home.showNewPostForm(false);
+		ViewStudentHome.alertPostSuccess.showAndWait();
+		ViewStudentHome.showNewPostForm(false);
 		refreshPostList();
 	}
 
@@ -96,22 +96,22 @@ public class ControllerRole1Home {
 	 * View the currently selected post in the post list.
 	 */
 	protected static void viewSelectedPost() {
-		int selectedIndex = ViewRole1Home.listView_Posts.getSelectionModel().getSelectedIndex();
-		if (selectedIndex < 0 || ViewRole1Home.currentPosts == null 
-				|| selectedIndex >= ViewRole1Home.currentPosts.size()) {
-			ViewRole1Home.alertPostError.setContentText("Please select a post to view.");
-			ViewRole1Home.alertPostError.showAndWait();
+		int selectedIndex = ViewStudentHome.listView_Posts.getSelectionModel().getSelectedIndex();
+		if (selectedIndex < 0 || ViewStudentHome.currentPosts == null 
+				|| selectedIndex >= ViewStudentHome.currentPosts.size()) {
+			ViewStudentHome.alertPostError.setContentText("Please select a post to view.");
+			ViewStudentHome.alertPostError.showAndWait();
 			return;
 		}
-		Post selectedPost = ViewRole1Home.currentPosts.get(selectedIndex);
+		Post selectedPost = ViewStudentHome.currentPosts.get(selectedIndex);
 		// Re-fetch from DB to get latest data
 		Post freshPost = theDatabase.getPostById(selectedPost.getId());
 		if (freshPost == null) {
-			ViewRole1Home.alertPostError.setContentText("Post not found.");
-			ViewRole1Home.alertPostError.showAndWait();
+			ViewStudentHome.alertPostError.setContentText("Post not found.");
+			ViewStudentHome.alertPostError.showAndWait();
 			return;
 		}
-		ViewPostDetail.displayPostDetail(ViewRole1Home.theStage, ViewRole1Home.theUser, freshPost);
+		ViewPostDetail.displayPostDetail(ViewStudentHome.theStage, ViewStudentHome.theUser, freshPost);
 	}
 
 	/**********
@@ -120,8 +120,8 @@ public class ControllerRole1Home {
 	protected static void submitReply() {
 		String content = ViewPostDetail.text_ReplyContent.getText().trim();
 		if (content.isEmpty()) {
-			ViewRole1Home.alertPostError.setContentText("Reply cannot be empty.");
-			ViewRole1Home.alertPostError.showAndWait();
+			ViewStudentHome.alertPostError.setContentText("Reply cannot be empty.");
+			ViewStudentHome.alertPostError.showAndWait();
 			return;
 		}
 		
@@ -140,14 +140,14 @@ public class ControllerRole1Home {
 	 * Navigate to the User Update page.
 	 */
 	protected static void performUpdate () {
-		guiUserUpdate.ViewUserUpdate.displayUserUpdate(ViewRole1Home.theStage, ViewRole1Home.theUser);
+		guiUserUpdate.ViewUserUpdate.displayUserUpdate(ViewStudentHome.theStage, ViewStudentHome.theUser);
 	}	
 
 	/**********
 	 * Log out and return to the login page.
 	 */
 	protected static void performLogout() {
-		guiUserLogin.ViewUserLogin.displayUserLogin(ViewRole1Home.theStage);
+		guiUserLogin.ViewUserLogin.displayUserLogin(ViewStudentHome.theStage);
 	}
 	
 	/**********

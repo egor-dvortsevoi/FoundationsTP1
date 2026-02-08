@@ -1,4 +1,4 @@
-package guiRole1;
+package guiStudent;
 
 import java.util.List;
 
@@ -141,12 +141,12 @@ public class ViewPostDetail {
 
         // Submit reply button
         setupButtonUI(button_SubmitReply, "Dialog", 14, 130, Pos.CENTER, 20, 500);
-        button_SubmitReply.setOnAction((_) -> { ControllerRole1Home.submitReply(); });
+        button_SubmitReply.setOnAction((_) -> { ControllerStudentHome.submitReply(); });
 
         // Back button
         setupButtonUI(button_Back, "Dialog", 14, 130, Pos.CENTER, 160, 500);
         button_Back.setOnAction((_) -> {
-            ViewRole1Home.displayRole1Home(theStage, theUser);
+            ViewStudentHome.displayStudentHome(theStage, theUser);
         });
 
         theRootPane.getChildren().addAll(

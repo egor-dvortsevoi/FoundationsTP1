@@ -1,9 +1,9 @@
-package guiRole1;
+package guiStudent;
 
-public class ModelRole1Home {
+public class ModelStudentHome {
 
 /*******
- * <p> Title: ModelRole1Home Class. </p>
+ * <p> Title: ModelStudentHome Class. </p>
  * 
  * <p> Description: The StudentHome Page Model.  This class is a stub for future expansion.
  * 
