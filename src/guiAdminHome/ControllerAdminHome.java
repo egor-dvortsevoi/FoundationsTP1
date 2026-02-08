@@ -1,8 +1,9 @@
 package guiAdminHome;
 
-import java.time.LocalDate;
-
 import database.Database;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
+
 
 /*******
  * <p> Title: GUIAdminHomePage Class. </p>
@@ -72,29 +73,18 @@ public class ControllerAdminHome {
 			return;
 		}
 		
-		// Retrieve and validate the deadline
-		LocalDate deadline = ViewAdminHome.datePicker_Deadline.getValue();
-		if (deadline != null && deadline.isBefore(LocalDate.now())) {
-			ViewAdminHome.alertEmailError.setContentText(
-					"The deadline cannot be in the past. Please select a future date.");
-			ViewAdminHome.alertEmailError.showAndWait();
-			return;
-		}
-		
 		// Inform the user that the invitation has been sent and display the invitation code
 		String theSelectedRole = (String) ViewAdminHome.combobox_SelectRole.getValue();
 		String invitationCode = theDatabase.generateInvitationCode(emailAddress,
-				theSelectedRole, deadline);
-		String deadlineStr = (deadline != null) ? " (deadline: " + deadline + ")" : " (no deadline)";
+				theSelectedRole);
 		String msg = "Code: " + invitationCode + " for role " + theSelectedRole + 
-				" was sent to: " + emailAddress + deadlineStr;
+				" was sent to: " + emailAddress;
 		System.out.println(msg);
 		ViewAdminHome.alertEmailSent.setContentText(msg);
 		ViewAdminHome.alertEmailSent.showAndWait();
 		
 		// Update the Admin Home pages status
 		ViewAdminHome.text_InvitationEmailAddress.setText("");
-		ViewAdminHome.datePicker_Deadline.setValue(null);
 		ViewAdminHome.label_NumberOfInvitations.setText("Number of outstanding invitations: " + 
 				theDatabase.getNumberOfInvitations());
 	}
@@ -140,12 +130,40 @@ public class ControllerAdminHome {
 	 * this function has not yet been implemented. </p>
 	 */
 	protected static void deleteUser() {
-		System.out.println("\n*** WARNING ***: Delete User Not Yet Implemented");
-		ViewAdminHome.alertNotImplemented.setTitle("*** WARNING ***");
-		ViewAdminHome.alertNotImplemented.setHeaderText("Delete User Issue");
-		ViewAdminHome.alertNotImplemented.setContentText("Delete User Not Yet Implemented");
-		ViewAdminHome.alertNotImplemented.showAndWait();
+	    String selected = ViewAdminHome.combobox_SelectUser.getValue();
+
+	    if (selected == null || selected.equals("<Select a User>")) {
+	        Alert a = new Alert(Alert.AlertType.INFORMATION);
+	        a.setTitle("Delete User");
+	        a.setHeaderText("No user selected");
+	        a.setContentText("Please select a user to delete.");
+	        a.showAndWait();
+	        return;
+	    }
+
+	    Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+	    confirm.setTitle("Delete User");
+	    confirm.setHeaderText("Are you sure?");
+	    confirm.setContentText("Delete user: " + selected + "?");
+
+	    var result = confirm.showAndWait();
+	    if (!result.isPresent() || result.get() != ButtonType.OK) return;
+
+	    boolean success = applicationMain.FoundationsMain.database.deleteUser(selected);
+
+	    Alert done = new Alert(Alert.AlertType.INFORMATION);
+	    done.setTitle("Delete User");
+
+	    if (success) {
+	        done.setHeaderText("User deleted");
+	        ViewAdminHome.populateUserList();
+	    } else {
+	        done.setHeaderText("Deletion failed");
+	    }
+
+	    done.showAndWait();
 	}
+
 	
 	/**********
 	 * <p> 
@@ -191,20 +209,11 @@ public class ControllerAdminHome {
 	 * @param emailAddress	This String holds what is expected to be an email address
 	 */
 	protected static boolean invalidEmailAddress(String emailAddress) {
-		
 		if (emailAddress.length() == 0) {
 			ViewAdminHome.alertEmailError.setContentText(
 					"Correct the email address and try again.");
 			ViewAdminHome.alertEmailError.showAndWait();
 			return true;
-		}
-		else { // Use checkEmailAdress from EmailAdressRecognizer to determine validity of email address
-			String validationOutput = guiTools.EmailAddressRecognizer.checkEmailAddress(emailAddress);
-			if (!validationOutput.isEmpty()) {
-				ViewAdminHome.alertEmailError.setContentText("Email Adress Error: " + validationOutput);
-				ViewAdminHome.alertEmailError.showAndWait();
-				return true;
-			}
 		}
 		return false;
 	}
