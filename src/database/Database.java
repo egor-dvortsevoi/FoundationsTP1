@@ -5,13 +5,10 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import entityClasses.Post;
-import entityClasses.Reply;
 import entityClasses.User;
 
 /*******
@@ -60,8 +57,8 @@ public class Database {
 	private String currentPreferredFirstName;
 	private String currentEmailAddress;
 	private boolean currentAdminRole;
-	private boolean currentNewStudent;
-	private boolean currentNewStaff;
+	private boolean currentNewRole1;
+	private boolean currentNewRole2;
 
 	/*******
 	 * <p> Method: Database </p>
@@ -117,45 +114,16 @@ public class Database {
 				+ "preferredFirstName VARCHAR(255), "
 				+ "emailAddress VARCHAR(255), "
 				+ "adminRole BOOL DEFAULT FALSE, "
-				+ "newStudent BOOL DEFAULT FALSE, "
-				+ "newStaff BOOL DEFAULT FALSE)";
+				+ "newRole1 BOOL DEFAULT FALSE, "
+				+ "newRole2 BOOL DEFAULT FALSE)";
 		statement.execute(userTable);
 		
 		// Create the invitation codes table
 	    String invitationCodesTable = "CREATE TABLE IF NOT EXISTS InvitationCodes ("
 	            + "code VARCHAR(10) PRIMARY KEY, "
 	    		+ "emailAddress VARCHAR(255), "
-	            + "role VARCHAR(10), "
-	            + "deadline DATE)";
+	            + "role VARCHAR(10))";
 	    statement.execute(invitationCodesTable);
-	    
-	    // Migration: add the deadline column if it does not already exist
-	    try {
-	        statement.execute("ALTER TABLE InvitationCodes ADD COLUMN IF NOT EXISTS deadline DATE");
-	    } catch (SQLException e) {
-	        // Column may already exist — ignore
-	    }
-	    
-	    // Create the posts table
-	    String postsTable = "CREATE TABLE IF NOT EXISTS postsDB ("
-	            + "id INT AUTO_INCREMENT PRIMARY KEY, "
-	            + "authorUsername VARCHAR(255), "
-	            + "threadName VARCHAR(255), "
-	            + "title VARCHAR(255), "
-	            + "content CLOB, "
-	            + "timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
-	            + "isDeleted BOOL DEFAULT FALSE)";
-	    statement.execute(postsTable);
-	    
-	    // Create the replies table
-	    String repliesTable = "CREATE TABLE IF NOT EXISTS repliesDB ("
-	            + "id INT AUTO_INCREMENT PRIMARY KEY, "
-	            + "postId INT, "
-	            + "authorUsername VARCHAR(255), "
-	            + "content CLOB, "
-	            + "timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
-	            + "FOREIGN KEY (postId) REFERENCES postsDB(id))";
-	    statement.execute(repliesTable);
 	}
 
 
@@ -214,7 +182,7 @@ public class Database {
  */
 	public void register(User user) throws SQLException {
 		String insertUser = "INSERT INTO userDB (userName, password, firstName, middleName, "
-				+ "lastName, preferredFirstName, emailAddress, adminRole, newStudent, newStaff) "
+				+ "lastName, preferredFirstName, emailAddress, adminRole, newRole1, newRole2) "
 				+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 		try (PreparedStatement pstmt = connection.prepareStatement(insertUser)) {
 			currentUsername = user.getUserName();
@@ -241,11 +209,11 @@ public class Database {
 			currentAdminRole = user.getAdminRole();
 			pstmt.setBoolean(8, currentAdminRole);
 			
-			currentNewStudent = user.getNewStudent();
-			pstmt.setBoolean(9, currentNewStudent);
+			currentNewRole1 = user.getNewRole1();
+			pstmt.setBoolean(9, currentNewRole1);
 			
-			currentNewStaff = user.getNewStaff();
-			pstmt.setBoolean(10, currentNewStaff);
+			currentNewRole2 = user.getNewRole2();
+			pstmt.setBoolean(10, currentNewRole2);
 			
 			pstmt.executeUpdate();
 		}
@@ -276,6 +244,17 @@ public class Database {
 		return userList;
 	}
 
+	
+	public boolean deleteUser(String username) {
+	    String query = "DELETE FROM userDB WHERE userName = ?";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setString(1, username);
+	        int rows = pstmt.executeUpdate();
+	        return rows > 0;
+	    } catch (SQLException e) {
+	        return false;
+	    }
+	}
 /*******
  * <p> Method: boolean loginAdmin(User user) </p>
  * 
@@ -304,7 +283,7 @@ public class Database {
 	
 	
 /*******
- * <p> Method: boolean loginStudent(User user) </p>
+ * <p> Method: boolean loginRole1(User user) </p>
  * 
  * <p> Description: Check to see that a user with the specified username, password, and role
  * 		is the same as a row in the table for the username, password, and role. </p>
@@ -314,10 +293,10 @@ public class Database {
  * @return true if the specified user has been logged in as an Student else false.
  * 
  */
-	public boolean loginStudent(User user) {
-		// Validates a Student user's login credentials.
+	public boolean loginRole1(User user) {
+		// Validates a student user's login credentials.
 		String query = "SELECT * FROM userDB WHERE userName = ? AND password = ? AND "
-				+ "newStudent = TRUE";
+				+ "newRole1 = TRUE";
 		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
 			pstmt.setString(1, user.getUserName());
 			pstmt.setString(2, user.getPassword());
@@ -330,7 +309,7 @@ public class Database {
 	}
 
 	/*******
-	 * <p> Method: boolean loginStaff(User user) </p>
+	 * <p> Method: boolean loginRole2(User user) </p>
 	 * 
 	 * <p> Description: Check to see that a user with the specified username, password, and role
 	 * 		is the same as a row in the table for the username, password, and role. </p>
@@ -341,9 +320,9 @@ public class Database {
 	 * 
 	 */
 	// Validates a reviewer user's login credentials.
-	public boolean loginStaff(User user) {
+	public boolean loginRole2(User user) {
 		String query = "SELECT * FROM userDB WHERE userName = ? AND password = ? AND "
-				+ "newStaff = TRUE";
+				+ "newRole2 = TRUE";
 		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
 			pstmt.setString(1, user.getUserName());
 			pstmt.setString(2, user.getPassword());
@@ -399,8 +378,8 @@ public class Database {
 	public int getNumberOfRoles (User user) {
 		int numberOfRoles = 0;
 		if (user.getAdminRole()) numberOfRoles++;
-		if (user.getNewStudent()) numberOfRoles++;
-		if (user.getNewStaff()) numberOfRoles++;
+		if (user.getNewRole1()) numberOfRoles++;
+		if (user.getNewRole2()) numberOfRoles++;
 		return numberOfRoles;
 	}	
 
@@ -422,36 +401,13 @@ public class Database {
 	 */
 	// Generates a new invitation code and inserts it into the database.
 	public String generateInvitationCode(String emailAddress, String role) {
-		return generateInvitationCode(emailAddress, role, null);
-	}
-
-	/*******
-	 * <p> Method: String generateInvitationCode(String emailAddress, String role, LocalDate deadline) </p>
-	 * 
-	 * <p> Description: Given an email address, a role, and an optional deadline, this method
-	 * establishes an invitation code and adds a record to the InvitationCodes table.  When the
-	 * invitation code is used, the stored email address is used to establish the new user and the
-	 * record is removed from the table.</p>
-	 * 
-	 * @param emailAddress specifies the email address for this new user.
-	 * @param role specifies the role that this new user will play.
-	 * @param deadline specifies the expiration date for this invitation (may be null for no deadline).
-	 * 
-	 * @return the code of six characters so the new user can use it to securely setup an account.
-	 */
-	public String generateInvitationCode(String emailAddress, String role, LocalDate deadline) {
 	    String code = UUID.randomUUID().toString().substring(0, 6); // Generate a random 6-character code
-	    String query = "INSERT INTO InvitationCodes (code, emailaddress, role, deadline) VALUES (?, ?, ?, ?)";
+	    String query = "INSERT INTO InvitationCodes (code, emailaddress, role) VALUES (?, ?, ?)";
 
 	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
 	        pstmt.setString(1, code);
 	        pstmt.setString(2, emailAddress);
 	        pstmt.setString(3, role);
-	        if (deadline != null) {
-	            pstmt.setDate(4, java.sql.Date.valueOf(deadline));
-	        } else {
-	            pstmt.setNull(4, java.sql.Types.DATE);
-	        }
 	        pstmt.executeUpdate();
 	    } catch (SQLException e) {
 	        e.printStackTrace();
@@ -564,38 +520,6 @@ public class Database {
 	
 	
 	/*******
-	 * <p> Method: boolean isInvitationExpired(String code) </p>
-	 * 
-	 * <p> Description: Check if an invitation code has passed its deadline.</p>
-	 * 
-	 * @param code is the 6 character String invitation code
-	 *  
-	 * @return true if the invitation code is expired, false if it is still valid or has no deadline.
-	 * 
-	 */
-	public boolean isInvitationExpired(String code) {
-	    String query = "SELECT deadline FROM InvitationCodes WHERE code = ?";
-	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-	        pstmt.setString(1, code);
-	        ResultSet rs = pstmt.executeQuery();
-	        if (rs.next()) {
-	            java.sql.Date deadline = rs.getDate("deadline");
-	            if (deadline != null) {
-	                // Expired if the deadline date is before today
-	                return deadline.toLocalDate().isBefore(LocalDate.now());
-	            }
-	            // No deadline set — treat as not expired
-	            return false;
-	        }
-	    } catch (SQLException e) {
-	        e.printStackTrace();
-	    }
-	    // Code not found — treat as expired/invalid
-	    return true;
-	}
-	
-	
-	/*******
 	 * <p> Method: void removeInvitationAfterUse(String code) </p>
 	 * 
 	 * <p> Description: Remove an invitation record once it is used.</p>
@@ -676,26 +600,6 @@ public class Database {
 	        pstmt.setString(2, username);
 	        pstmt.executeUpdate();
 	        currentFirstName = firstName;
-	    } catch (SQLException e) {
-	        e.printStackTrace();
-	    }
-	}
-
-	/*******
-	 * <p> Method: void updatePassword(String username, String password) </p>
-	 *
-	 * <p> Description: Update the password for the specified user.</p>
-	 *
-	 * @param username is the username of the user
-	 * @param password is the new password for the user
-	 */
-	public void updatePassword(String username, String password) {
-	    String query = "UPDATE userDB SET password = ? WHERE username = ?";
-	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-	        pstmt.setString(1, password);
-	        pstmt.setString(2, username);
-	        pstmt.executeUpdate();
-	        currentPassword = password;
 	    } catch (SQLException e) {
 	        e.printStackTrace();
 	    }
@@ -911,6 +815,9 @@ public class Database {
 	    }
 	}
 	
+
+
+	
 	
 	/*******
 	 * <p> Method: boolean getUserAccountDetails(String username) </p>
@@ -937,8 +844,8 @@ public class Database {
 	    	currentPreferredFirstName = rs.getString(7);
 	    	currentEmailAddress = rs.getString(8);
 	    	currentAdminRole = rs.getBoolean(9);
-	    	currentNewStudent = rs.getBoolean(10);
-	    	currentNewStaff = rs.getBoolean(11);
+	    	currentNewRole1 = rs.getBoolean(10);
+	    	currentNewRole2 = rs.getBoolean(11);
 			return true;
 	    } catch (SQLException e) {
 			return false;
@@ -978,31 +885,31 @@ public class Database {
 				return false;
 			}
 		}
-		if (role.compareTo("Student") == 0) {
-			String query = "UPDATE userDB SET newStudent = ? WHERE username = ?";
+		if (role.compareTo("Role1") == 0) {
+			String query = "UPDATE userDB SET newRole1 = ? WHERE username = ?";
 			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
 				pstmt.setString(1, value);
 				pstmt.setString(2, username);
 				pstmt.executeUpdate();
 				if (value.compareTo("true") == 0)
-					currentNewStudent = true;
+					currentNewRole1 = true;
 				else
-					currentNewStudent = false;
+					currentNewRole1 = false;
 				return true;
 			} catch (SQLException e) {
 				return false;
 			}
 		}
-		if (role.compareTo("Staff") == 0) {
-			String query = "UPDATE userDB SET newStaff = ? WHERE username = ?";
+		if (role.compareTo("Role2") == 0) {
+			String query = "UPDATE userDB SET newRole2 = ? WHERE username = ?";
 			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
 				pstmt.setString(1, value);
 				pstmt.setString(2, username);
 				pstmt.executeUpdate();
 				if (value.compareTo("true") == 0)
-					currentNewStaff = true;
+					currentNewRole2 = true;
 				else
-					currentNewStaff = false;
+					currentNewRole2 = false;
 				return true;
 			} catch (SQLException e) {
 				return false;
@@ -1102,25 +1009,25 @@ public class Database {
 
 	
 	/*******
-	 * <p> Method: boolean getCurrentNewStudent() </p>
+	 * <p> Method: boolean getCurrentNewRole1() </p>
 	 * 
 	 * <p> Description: Get the current user's Student role attribute.</p>
 	 * 
 	 * @return true if this user plays a Student role, else false
 	 *  
 	 */
-	public boolean getCurrentNewStudent() { return currentNewStudent;};
+	public boolean getCurrentNewRole1() { return currentNewRole1;};
 
 	
 	/*******
-	 * <p> Method: boolean getCurrentNewStaff() </p>
+	 * <p> Method: boolean getCurrentNewRole2() </p>
 	 * 
 	 * <p> Description: Get the current user's Reviewer role attribute.</p>
 	 * 
 	 * @return true if this user plays a Reviewer role, else false
 	 *  
 	 */
-	public boolean getCurrentNewStaff() { return currentNewStaff;};
+	public boolean getCurrentNewRole2() { return currentNewRole2;};
 
 	
 	/*******
@@ -1166,170 +1073,5 @@ public class Database {
 		} catch(SQLException se){ 
 			se.printStackTrace(); 
 		} 
-	}
-
-
-	// ========================================================================================
-	// Posts and Replies Methods
-	// ========================================================================================
-
-	/*******
-	 * <p> Method: void createPost(Post post) </p>
-	 * 
-	 * <p> Description: Inserts a new post into the postsDB table.</p>
-	 * 
-	 * @param post the Post object to insert
-	 */
-	public void createPost(Post post) {
-	    String query = "INSERT INTO postsDB (authorUsername, threadName, title, content) "
-	            + "VALUES (?, ?, ?, ?)";
-	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-	        pstmt.setString(1, post.getAuthorUsername());
-	        pstmt.setString(2, post.getThreadName());
-	        pstmt.setString(3, post.getTitle());
-	        pstmt.setString(4, post.getContent());
-	        pstmt.executeUpdate();
-	    } catch (SQLException e) {
-	        e.printStackTrace();
-	    }
-	}
-
-
-	/*******
-	 * <p> Method: void createReply(Reply reply) </p>
-	 * 
-	 * <p> Description: Inserts a new reply into the repliesDB table.</p>
-	 * 
-	 * @param reply the Reply object to insert
-	 */
-	public void createReply(Reply reply) {
-	    String query = "INSERT INTO repliesDB (postId, authorUsername, content) "
-	            + "VALUES (?, ?, ?)";
-	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-	        pstmt.setInt(1, reply.getPostId());
-	        pstmt.setString(2, reply.getAuthorUsername());
-	        pstmt.setString(3, reply.getContent());
-	        pstmt.executeUpdate();
-	    } catch (SQLException e) {
-	        e.printStackTrace();
-	    }
-	}
-
-
-	/*******
-	 * <p> Method: List&lt;Post&gt; getAllPosts() </p>
-	 * 
-	 * <p> Description: Retrieves all non-deleted posts ordered by timestamp descending (newest
-	 * first).</p>
-	 * 
-	 * @return a list of Post objects
-	 */
-	public List<Post> getAllPosts() {
-	    List<Post> posts = new ArrayList<>();
-	    String query = "SELECT * FROM postsDB WHERE isDeleted = FALSE ORDER BY timestamp DESC";
-	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-	        ResultSet rs = pstmt.executeQuery();
-	        while (rs.next()) {
-	            Post p = new Post(
-	                rs.getInt("id"),
-	                rs.getString("authorUsername"),
-	                rs.getString("threadName"),
-	                rs.getString("title"),
-	                rs.getString("content"),
-	                rs.getTimestamp("timestamp"),
-	                rs.getBoolean("isDeleted")
-	            );
-	            posts.add(p);
-	        }
-	    } catch (SQLException e) {
-	        e.printStackTrace();
-	    }
-	    return posts;
-	}
-
-
-	/*******
-	 * <p> Method: Post getPostById(int postId) </p>
-	 * 
-	 * <p> Description: Retrieves a single post by its id.</p>
-	 * 
-	 * @param postId the id of the post
-	 * @return the Post object, or null if not found
-	 */
-	public Post getPostById(int postId) {
-	    String query = "SELECT * FROM postsDB WHERE id = ?";
-	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-	        pstmt.setInt(1, postId);
-	        ResultSet rs = pstmt.executeQuery();
-	        if (rs.next()) {
-	            return new Post(
-	                rs.getInt("id"),
-	                rs.getString("authorUsername"),
-	                rs.getString("threadName"),
-	                rs.getString("title"),
-	                rs.getString("content"),
-	                rs.getTimestamp("timestamp"),
-	                rs.getBoolean("isDeleted")
-	            );
-	        }
-	    } catch (SQLException e) {
-	        e.printStackTrace();
-	    }
-	    return null;
-	}
-
-
-	/*******
-	 * <p> Method: List&lt;Reply&gt; getRepliesForPost(int postId) </p>
-	 * 
-	 * <p> Description: Retrieves all replies for a given post, ordered by timestamp ascending
-	 * (oldest first — chronological order).</p>
-	 * 
-	 * @param postId the id of the parent post
-	 * @return a list of Reply objects
-	 */
-	public List<Reply> getRepliesForPost(int postId) {
-	    List<Reply> replies = new ArrayList<>();
-	    String query = "SELECT * FROM repliesDB WHERE postId = ? ORDER BY timestamp ASC";
-	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-	        pstmt.setInt(1, postId);
-	        ResultSet rs = pstmt.executeQuery();
-	        while (rs.next()) {
-	            Reply r = new Reply(
-	                rs.getInt("id"),
-	                rs.getInt("postId"),
-	                rs.getString("authorUsername"),
-	                rs.getString("content"),
-	                rs.getTimestamp("timestamp")
-	            );
-	            replies.add(r);
-	        }
-	    } catch (SQLException e) {
-	        e.printStackTrace();
-	    }
-	    return replies;
-	}
-
-
-	/*******
-	 * <p> Method: int getReplyCountForPost(int postId) </p>
-	 * 
-	 * <p> Description: Returns the number of replies for a given post.</p>
-	 * 
-	 * @param postId the id of the parent post
-	 * @return the number of replies
-	 */
-	public int getReplyCountForPost(int postId) {
-	    String query = "SELECT COUNT(*) AS count FROM repliesDB WHERE postId = ?";
-	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-	        pstmt.setInt(1, postId);
-	        ResultSet rs = pstmt.executeQuery();
-	        if (rs.next()) {
-	            return rs.getInt("count");
-	        }
-	    } catch (SQLException e) {
-	        e.printStackTrace();
-	    }
-	    return 0;
 	}
 }
