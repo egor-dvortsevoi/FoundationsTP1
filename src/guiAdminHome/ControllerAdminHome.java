@@ -3,6 +3,8 @@ package guiAdminHome;
 import database.Database;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
+import java.util.UUID;
+
 
 
 /*******
@@ -113,13 +115,28 @@ public class ControllerAdminHome {
 	 * <p> Description: Protected method that is currently a stub informing the user that
 	 * this function has not yet been implemented. </p>
 	 */
-	protected static void setOnetimePassword () {
-		System.out.println("\n*** WARNING ***: One-Time Password Not Yet Implemented");
-		ViewAdminHome.alertNotImplemented.setTitle("*** WARNING ***");
-		ViewAdminHome.alertNotImplemented.setHeaderText("One-Time Password Issue");
-		ViewAdminHome.alertNotImplemented.setContentText("One-Time Password Not Yet Implemented");
-		ViewAdminHome.alertNotImplemented.showAndWait();
+	protected static void setOnetimePassword() {
+	    String username = ViewAdminHome.combobox_SelectUser.getValue();
+
+	    if (username == null || username.isEmpty()) {
+	        ViewAdminHome.alertNotImplemented.setTitle("Selection Error");
+	        ViewAdminHome.alertNotImplemented.setHeaderText("No User Selected");
+	        ViewAdminHome.alertNotImplemented.setContentText("Please select a user before setting a one-time password.");
+	        ViewAdminHome.alertNotImplemented.showAndWait();
+	        return;
+	    }
+
+	    String otp = UUID.randomUUID().toString().substring(0, 8);
+
+	    theDatabase.setOneTimePassword(username, otp);
+
+	    ViewAdminHome.alertNotImplemented.setTitle("One-Time Password Set");
+	    ViewAdminHome.alertNotImplemented.setHeaderText("OTP Created Successfully");
+	    ViewAdminHome.alertNotImplemented.setContentText("One-time password for " + username + ": " + otp);
+	    ViewAdminHome.alertNotImplemented.showAndWait();
 	}
+
+
 	
 	/**********
 	 * <p> 

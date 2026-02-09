@@ -130,10 +130,10 @@ public class ControllerAddRemoveRoles {
 		ViewAddRemoveRoles.addList.add("<Select a role>");
 		if (!theDatabase.getCurrentAdminRole())
 			ViewAddRemoveRoles.addList.add("Admin");
-		if (!theDatabase.getCurrentNewStudent())
-			ViewAddRemoveRoles.addList.add("Student");
-		if (!theDatabase.getCurrentNewStaff())
-			ViewAddRemoveRoles.addList.add("Staff");
+		if (!theDatabase.getCurrentNewRole1())
+			ViewAddRemoveRoles.addList.add("Role1");
+		if (!theDatabase.getCurrentNewRole2())
+			ViewAddRemoveRoles.addList.add("Role2");
 
 		// Create the list of roles that could be removed for the currently selected user (e.g., Do
 		// not show a role to remove that the user does not have!)
@@ -141,10 +141,10 @@ public class ControllerAddRemoveRoles {
 		ViewAddRemoveRoles.removeList.add("<Select a role>");
 		if (theDatabase.getCurrentAdminRole())
 			ViewAddRemoveRoles.removeList.add("Admin");
-		if (theDatabase.getCurrentNewStudent())
-			ViewAddRemoveRoles.removeList.add("Student");
-		if (theDatabase.getCurrentNewStaff())
-			ViewAddRemoveRoles.removeList.add("Staff");
+		if (theDatabase.getCurrentNewRole1())
+			ViewAddRemoveRoles.removeList.add("Role1");
+		if (theDatabase.getCurrentNewRole2())
+			ViewAddRemoveRoles.removeList.add("Role2");
 		
 		// Create the list or roles that the user currently has with proper use of a comma between
 		// items
@@ -157,22 +157,22 @@ public class ControllerAddRemoveRoles {
 			notTheFirst = true;
 		}
 		
-		// Student - It could be at the head of the list or later in the list
-		if (theDatabase.getCurrentNewStudent()) {
+		// Roles 1 - It could be at the head of the list or later in the list
+		if (theDatabase.getCurrentNewRole1()) {
 			if (notTheFirst)
-				theCurrentRoles += ", Student"; 
+				theCurrentRoles += ", Role1"; 
 			else {
-				theCurrentRoles += "Student";
+				theCurrentRoles += "Role1";
 				notTheFirst = true;
 			}
 		}
 
-		// Staff - It could be at the head of the list or later in the list
-		if (theDatabase.getCurrentNewStaff()) {
+		// Roles 2 - It could be at the head of the list or later in the list
+		if (theDatabase.getCurrentNewRole2()) {
 			if (notTheFirst)
-				theCurrentRoles += ", Staff"; 
+				theCurrentRoles += ", Role2"; 
 			else {
-				theCurrentRoles += "Staff";
+				theCurrentRoles += "Role2";
 				notTheFirst = true;
 			}
 		}

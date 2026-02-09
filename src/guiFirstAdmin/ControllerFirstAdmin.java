@@ -104,23 +104,6 @@ public class ControllerFirstAdmin {
 	 */
 	protected static void doSetupAdmin(Stage ps, int r) {
 		
-		// Input validation code:
-		String validationOutput = guiTools.UserNameRecognizer.checkForValidUserName(adminUsername); // Instantiate string
-    	// for validation function to return
-		
-		// If the string doesn't return empty, then provide the error text to the admin creation page GUI using the PasswordsDoNotMatch
-		if (!validationOutput.isEmpty()) {
-			ViewFirstAdmin.label_PasswordsDoNotMatch.setText(("Invalid Username Format: " + validationOutput));
-    		return;
-    	}
-		
-		// Validate password format
-		String passwordValidation = guiTools.PasswordRecognizer.checkForValidPassword(adminPassword1);
-		if (!passwordValidation.isEmpty()) {
-			ViewFirstAdmin.label_PasswordsDoNotMatch.setText("Invalid Password: " + passwordValidation);
-			return;
-		}
-		
 		// Make sure the two passwords are the same
 		if (adminPassword1.compareTo(adminPassword2) == 0) {
         	// Create the passwords and proceed to the user home page

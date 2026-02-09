@@ -68,30 +68,6 @@ public class ControllerUserLogin {
 		String password = ViewUserLogin.text_Password.getText();
     	boolean loginResult = false;
     	
-    	// Input validation code:
-    	String validationOutput = guiTools.UserNameRecognizer.checkForValidUserName(username); // Instantiate string
-    	// for validation function to return
-    	// If the string doesn't return empty, then provide the error text to the login page GUI
-    	if (!validationOutput.isEmpty()) {
-    		
-    		// Errors are hidden from the user - show generic message
-    		ViewUserLogin.alertUsernamePasswordError.setContentText("Incorrect username/password. Try again!");
-    		ViewUserLogin.alertUsernamePasswordError.showAndWait();
-    		
-    		return;
-    	}
-    	// If validationOutput is empty, then continue as normal
-    	
-    	// Validate password format (errors are hidden from the user)
-    	String passwordValidation = guiTools.PasswordRecognizer.checkForValidPassword(password);
-    	if (!passwordValidation.isEmpty()) {
-    		// Errors are hidden from the user - show generic message
-    		ViewUserLogin.alertUsernamePasswordError.setContentText(
-    				"Incorrect username/password. Try again!");
-    		ViewUserLogin.alertUsernamePasswordError.showAndWait();
-    		return;
-    	}
-    	
 		// Fetch the user and verify the username
      	if (theDatabase.getUserAccountDetails(username) == false) {
      		// Don't provide too much information.  Don't say the username is invalid or the
@@ -106,6 +82,42 @@ public class ControllerUserLogin {
 		// Check to see that the login password matches the account password
     	String actualPassword = theDatabase.getCurrentPassword();
     	
+    	
+    	
+    	//Task 2.2
+    	String storedOTP = theDatabase.getOneTimePassword(username);
+
+    	if (storedOTP != null && storedOTP.equals(password)) {
+
+    	    // Clear OTP immediately
+    	    theDatabase.clearOneTimePassword(username);
+
+    	    // Build a User object (same pattern as normal login)
+    	    User tempUser = new User(
+    	        username,
+    	        password,
+    	        theDatabase.getCurrentFirstName(),
+    	        theDatabase.getCurrentMiddleName(),
+    	        theDatabase.getCurrentLastName(),
+    	        theDatabase.getCurrentPreferredFirstName(),
+    	        theDatabase.getCurrentEmailAddress(),
+    	        theDatabase.getCurrentAdminRole(),
+    	        theDatabase.getCurrentNewRole1(),
+    	        theDatabase.getCurrentNewRole2()
+    	    );
+
+    	    // Send user to password reset screen
+    	    guiUserUpdate.ViewUserUpdate.displayUserUpdate(theStage, tempUser);
+    	    return;
+    	}
+
+    	
+    	
+    	
+    	
+    	
+    	
+    	
     	if (password.compareTo(actualPassword) != 0) {
     		ViewUserLogin.alertUsernamePasswordError.setContentText(
     				"Incorrect username/password. Try again!");
@@ -119,7 +131,7 @@ public class ControllerUserLogin {
     			theDatabase.getCurrentMiddleName(), theDatabase.getCurrentLastName(), 
     			theDatabase.getCurrentPreferredFirstName(), theDatabase.getCurrentEmailAddress(), 
     			theDatabase.getCurrentAdminRole(), 
-    			theDatabase.getCurrentNewStudent(), theDatabase.getCurrentNewStaff());
+    			theDatabase.getCurrentNewRole1(), theDatabase.getCurrentNewRole2());
     	
     	// See which home page dispatch to use
 		int numberOfRoles = theDatabase.getNumberOfRoles(user);		
@@ -133,15 +145,15 @@ public class ControllerUserLogin {
 				if (loginResult) {
 					guiAdminHome.ViewAdminHome.displayAdminHome(theStage, user);
 				}
-			} else if (user.getNewStudent()) {
-				loginResult = theDatabase.loginStudent(user);
+			} else if (user.getNewRole1()) {
+				loginResult = theDatabase.loginRole1(user);
 				if (loginResult) {
-					guiStudent.ViewStudentHome.displayStudentHome(theStage, user);
+					guiRole1.ViewRole1Home.displayRole1Home(theStage, user);
 				}
-			} else if (user.getNewStaff()) {
-				loginResult = theDatabase.loginStaff(user);
+			} else if (user.getNewRole2()) {
+				loginResult = theDatabase.loginRole2(user);
 				if (loginResult) {
-					guiStaff.ViewStaffHome.displayStaffHome(theStage, user);
+					guiRole2.ViewRole2Home.displayRole2Home(theStage, user);
 				}
 				// Other roles
 			} else {
@@ -164,14 +176,6 @@ public class ControllerUserLogin {
 	 * 
 	 */
 	protected static void doSetupAccount(Stage theStage, String invitationCode) {
-		// Validate invitation code format before proceeding (errors hidden from user)
-		String invCodeValidation = guiTools.InvitationCodeRecognizer.checkForValidInvitationCode(invitationCode);
-		if (!invCodeValidation.isEmpty()) {
-			// Show generic error - don't reveal format rules
-			ViewUserLogin.alertUsernamePasswordError.setContentText("The invitation code is not valid.");
-			ViewUserLogin.alertUsernamePasswordError.showAndWait();
-			return;
-		}
 		guiNewAccount.ViewNewAccount.displayNewAccount(theStage, invitationCode);
 	}
 

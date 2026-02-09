@@ -1,8 +1,8 @@
-package guiStaff;
+package guiRole2;
 
 
 /*******
- * <p> Title: ControllerstaffHome Class. </p>
+ * <p> Title: ControllerRole2Home Class. </p>
  * 
  * <p> Description: The Java/FX-based Role 2 Home Page.  This class provides the controller
  * actions basic on the user's use of the JavaFX GUI widgets defined by the View class.
@@ -21,7 +21,7 @@ package guiStaff;
  * @version 1.01		2025-09-16 Update Javadoc documentation *  
  */
 
-public class ControllerStaffHome {
+public class ControllerRole2Home {
 	
 	/*-*******************************************************************************************
 
@@ -36,7 +36,7 @@ public class ControllerStaffHome {
 	/**
 	 * Default constructor is not used.
 	 */
-	public ControllerStaffHome() {
+	public ControllerRole2Home() {
 	}
 
 	/**********
@@ -47,7 +47,7 @@ public class ControllerStaffHome {
 	 * 
 	 */
 	protected static void performUpdate () {
-		guiUserUpdate.ViewUserUpdate.displayUserUpdate(ViewStaffHome.theStage, ViewStaffHome.theUser);
+		guiUserUpdate.ViewUserUpdate.displayUserUpdate(ViewRole2Home.theStage, ViewRole2Home.theUser);
 	}	
 
 	/**********
@@ -59,7 +59,7 @@ public class ControllerStaffHome {
 	 * 
 	 */
 	protected static void performLogout() {
-		guiUserLogin.ViewUserLogin.displayUserLogin(ViewStaffHome.theStage);
+		guiUserLogin.ViewUserLogin.displayUserLogin(ViewRole2Home.theStage);
 	}
 	
 	/**********

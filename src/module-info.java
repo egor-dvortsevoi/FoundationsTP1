@@ -1,4 +1,4 @@
-module HW1 {
+module FoundationsF25 {
 	requires javafx.controls;
 	requires java.sql;
 	

@@ -37,6 +37,15 @@ public class ControllerUserUpdate {
 	 */
 	protected static void goToUserHomePage(Stage theStage, User theUser) {
 		
+		
+		//Task2.2
+	    // If this user arrived here through OTP reset, force re-login
+	    if (theUser.getPassword() == null || theUser.getPassword().length() == 0) {
+	        guiUserLogin.ViewUserLogin.displayUserLogin(theStage);
+	        return;
+	    }
+
+		
 		// Get the roles the user selected during login
 		int theRole = applicationMain.FoundationsMain.activeHomePage;
 
@@ -46,10 +55,10 @@ public class ControllerUserUpdate {
 			guiAdminHome.ViewAdminHome.displayAdminHome(theStage, theUser);
 			break;
 		case 2:
-			guiStudent.ViewStudentHome.displayStudentHome(theStage, theUser);
+			guiRole1.ViewRole1Home.displayRole1Home(theStage, theUser);
 			break;
 		case 3:
-			guiStaff.ViewStaffHome.displayStaffHome(theStage, theUser);
+			guiRole2.ViewRole2Home.displayRole2Home(theStage, theUser);
 			break;
 		default: 
 			System.out.println("*** ERROR *** UserUpdate goToUserHome has an invalid role: " + 

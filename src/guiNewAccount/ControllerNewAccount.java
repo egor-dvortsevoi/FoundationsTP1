@@ -62,19 +62,6 @@ public class ControllerNewAccount {
 	 */	
 	protected static void doCreateUser() {
 		
-		// Check if the invitation code has expired before proceeding
-		String invCode = ViewNewAccount.theInvitationCode;
-		if (theDatabase.isInvitationExpired(invCode)) {
-			ViewNewAccount.alertInvitationCodeIsInvalid.setHeaderText("Invitation Code Expired");
-			ViewNewAccount.alertInvitationCodeIsInvalid.setContentText(
-					"This invitation code has expired. Please request a new invitation.");
-			ViewNewAccount.alertInvitationCodeIsInvalid.showAndWait();
-			// Reset the alert text back for future use
-			ViewNewAccount.alertInvitationCodeIsInvalid.setHeaderText("The invitation code is not valid.");
-			ViewNewAccount.alertInvitationCodeIsInvalid.setContentText("Correct the code and try again.");
-			return;
-		}
-		
 		// Fetch the username and password. (We use the first of the two here, but we will validate
 		// that the two password fields are the same before we do anything with it.)
 		String username = ViewNewAccount.text_Username.getText();
@@ -88,33 +75,6 @@ public class ControllerNewAccount {
 		// Initialize local variables that will be created during this process
 		int roleCode = 0;
 		User user = null;
-		
-		// Input validation code:
-		String validationOutput = guiTools.UserNameRecognizer.checkForValidUserName(username); // Instantiate string
-		// for validation function to return
-				
-		// If the string doesn't return empty, then provide the error text to the new account creation page GUI
-		if (!validationOutput.isEmpty()) {
-		ViewNewAccount.alertUsernameError.setContentText(validationOutput);
-    	ViewNewAccount.alertUsernameError.showAndWait();
-		return;
-		}
-				
-		// Validate invitation code format (errors hidden from user)
-		String invCodeInput = ViewNewAccount.theInvitationCode;
-		String invCodeValidation = guiTools.InvitationCodeRecognizer.checkForValidInvitationCode(invCodeInput);
-		if (!invCodeValidation.isEmpty()) {
-			ViewNewAccount.alertInvitationCodeIsInvalid.showAndWait();
-			return;
-		}
-
-		// Validate password format
-		String passwordValidation = guiTools.PasswordRecognizer.checkForValidPassword(password);
-		if (!passwordValidation.isEmpty()) {
-			ViewNewAccount.alertPasswordError.setContentText(passwordValidation);
-			ViewNewAccount.alertPasswordError.showAndWait();
-			return;
-		}
 
 		// Make sure the two passwords are the same.	
 		if (ViewNewAccount.text_Password1.getText().
@@ -125,10 +85,10 @@ public class ControllerNewAccount {
 			if (ViewNewAccount.theRole.compareTo("Admin") == 0) {
 				roleCode = 1;
 				user = new User(username, password, "", "", "", "", "", true, false, false);
-			} else if (ViewNewAccount.theRole.compareTo("Student") == 0) {
+			} else if (ViewNewAccount.theRole.compareTo("Role1") == 0) {
 				roleCode = 2;
 				user = new User(username, password, "", "", "", "", "", false, true, false);
-			} else if (ViewNewAccount.theRole.compareTo("Staff") == 0) {
+			} else if (ViewNewAccount.theRole.compareTo("Role2") == 0) {
 				roleCode = 3;
 				user = new User(username, password, "", "", "", "", "", false, false, true);
 			} else {

@@ -115,7 +115,8 @@ public class Database {
 				+ "emailAddress VARCHAR(255), "
 				+ "adminRole BOOL DEFAULT FALSE, "
 				+ "newRole1 BOOL DEFAULT FALSE, "
-				+ "newRole2 BOOL DEFAULT FALSE)";
+				+ "newRole2 BOOL DEFAULT FALSE, "
+				+ "oneTimePassword VARCHAR(255))";
 		statement.execute(userTable);
 		
 		// Create the invitation codes table
@@ -465,6 +466,85 @@ public class Database {
 	    }
 		return false;
 	}
+	
+	
+	
+	
+	
+	//Task2.2
+	public void setOneTimePassword(String username, String otp) {
+	    try {
+	        PreparedStatement stmt = connection.prepareStatement(
+	            "UPDATE userDB SET oneTimePassword = ? WHERE userName = ?"
+	        );
+	        stmt.setString(1, otp);
+	        stmt.setString(2, username);
+	        stmt.executeUpdate();
+	        stmt.close();
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	}
+
+	public String getOneTimePassword(String username) {
+	    try {
+	        PreparedStatement stmt = connection.prepareStatement(
+	            "SELECT oneTimePassword FROM userDB WHERE userName = ?"
+	        );
+	        stmt.setString(1, username);
+	        ResultSet rs = stmt.executeQuery();
+
+	        String otp = null;
+	        if (rs.next()) {
+	            otp = rs.getString("oneTimePassword");
+	        }
+
+	        rs.close();
+	        stmt.close();
+	        return otp;
+
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	        return null;
+	    }
+	}
+
+	public void clearOneTimePassword(String username) {
+	    try {
+	        PreparedStatement stmt = connection.prepareStatement(
+	            "UPDATE userDB SET oneTimePassword = NULL WHERE userName = ?"
+	        );
+	        stmt.setString(1, username);
+	        stmt.executeUpdate();
+	        stmt.close();
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	}
+	
+	
+	public void updatePassword(String username, String newPassword) {
+	    try {
+	        PreparedStatement stmt = connection.prepareStatement(
+	            "UPDATE userDB SET password = ? WHERE userName = ?"
+	        );
+	        stmt.setString(1, newPassword);
+	        stmt.setString(2, username);
+	        stmt.executeUpdate();
+	        stmt.close();
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	}
+
+
+
+
+	
+	
+	
+	
+	
 	
 	
 	/*******
