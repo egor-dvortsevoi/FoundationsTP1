@@ -1633,4 +1633,25 @@ public int getUnreadReplyCount(String username, int postId) {
     }
     return 0;
 }
+
+/**********
+ * Soft delete a post. Only the author may delete their own post.
+ */
+public boolean deleteOwnPost(int postId, String username) {
+    String sql =
+        "UPDATE postsDB " +
+        "SET isDeleted = TRUE " +
+        "WHERE id = ? AND authorUsername = ? AND isDeleted = FALSE";
+
+    try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+        pstmt.setInt(1, postId);
+        pstmt.setString(2, username);
+        return pstmt.executeUpdate() == 1;
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return false;
+}
+
+
 }
