@@ -3,7 +3,6 @@ package guiAddRemoveRoles;
 import database.Database;
 import javafx.collections.FXCollections;
 import javafx.geometry.Pos;
-import javafx.scene.control.ComboBox;
 
 /*******
  * <p> Title: ControllerAddRemoveRoles Class. </p>
@@ -67,45 +66,34 @@ public class ControllerAddRemoveRoles {
 	/**********
 	 * <p> Method: repaintTheWindow() </p>
 	 * 
-	 * <p> Description: This method determines the current state of the window and then establishes
-	 * the appropriate list of widgets in the Pane to show the proper set of current values. </p>
+	 * <p> Description: This method determines the current state of the window and then manages
+	 * the visibility of widgets based on whether a user has been selected or not. </p>
 	 * 
 	 */
 	protected static void repaintTheWindow() {
-		// Clear what had been displayed
-		ViewAddRemoveRoles.theRootPane.getChildren().clear();
-		
 		// Defermine which of the two views to show to the user
 		if (ViewAddRemoveRoles.theSelectedUser.compareTo("<Select a User>") == 0) {
 			// Only show the request to select a user to be updated and the ComboBox
-			ViewAddRemoveRoles.theRootPane.getChildren().addAll(
-					ViewAddRemoveRoles.label_PageTitle, ViewAddRemoveRoles.label_UserDetails, 
-					ViewAddRemoveRoles.button_UpdateThisUser, ViewAddRemoveRoles.line_Separator1,
-					ViewAddRemoveRoles.label_SelectUser, ViewAddRemoveRoles.combobox_SelectUser, 
-					ViewAddRemoveRoles.line_Separator4, ViewAddRemoveRoles.button_Return,
-					ViewAddRemoveRoles.button_Logout, ViewAddRemoveRoles.button_Quit);
+			// Hide widgets for user selection mode
+			ViewAddRemoveRoles.label_CurrentRoles.setVisible(false);
+			ViewAddRemoveRoles.label_SelectRoleToBeAdded.setVisible(false);
+			ViewAddRemoveRoles.combobox_SelectRoleToAdd.setVisible(false);
+			ViewAddRemoveRoles.button_AddRole.setVisible(false);
+			ViewAddRemoveRoles.label_SelectRoleToBeRemoved.setVisible(false);
+			ViewAddRemoveRoles.combobox_SelectRoleToRemove.setVisible(false);
+			ViewAddRemoveRoles.button_RemoveRole.setVisible(false);
 		}
 		else {
 			// Show all the fields as there is a selected user (as opposed to the prompt)
-			ViewAddRemoveRoles.theRootPane.getChildren().addAll(
-					ViewAddRemoveRoles.label_PageTitle, ViewAddRemoveRoles.label_UserDetails,
-					ViewAddRemoveRoles.button_UpdateThisUser, ViewAddRemoveRoles.line_Separator1,
-					ViewAddRemoveRoles.label_SelectUser,
-					ViewAddRemoveRoles.combobox_SelectUser, 
-					ViewAddRemoveRoles.label_CurrentRoles,
-					ViewAddRemoveRoles.label_SelectRoleToBeAdded,
-					ViewAddRemoveRoles.combobox_SelectRoleToAdd,
-					ViewAddRemoveRoles.button_AddRole,
-					ViewAddRemoveRoles.label_SelectRoleToBeRemoved,
-					ViewAddRemoveRoles.combobox_SelectRoleToRemove,
-					ViewAddRemoveRoles.button_RemoveRole,
-					ViewAddRemoveRoles.line_Separator4, 
-					ViewAddRemoveRoles.button_Return,
-					ViewAddRemoveRoles.button_Logout,
-					ViewAddRemoveRoles.button_Quit);
+			// Show widgets for role modification mode
+			ViewAddRemoveRoles.label_CurrentRoles.setVisible(true);
+			ViewAddRemoveRoles.label_SelectRoleToBeAdded.setVisible(true);
+			ViewAddRemoveRoles.combobox_SelectRoleToAdd.setVisible(true);
+			ViewAddRemoveRoles.button_AddRole.setVisible(true);
+			ViewAddRemoveRoles.label_SelectRoleToBeRemoved.setVisible(true);
+			ViewAddRemoveRoles.combobox_SelectRoleToRemove.setVisible(true);
+			ViewAddRemoveRoles.button_RemoveRole.setVisible(true);
 		}
-		
-		// Add the list of widgets to the stage and show it
 		
 		// Set the title for the window
 		ViewAddRemoveRoles.theStage.setTitle("CSE 360 Foundation Code: Admin Opertaions Page");
@@ -157,7 +145,7 @@ public class ControllerAddRemoveRoles {
 			notTheFirst = true;
 		}
 		
-		// Student - It could be at the head of the list or later in the list
+		// Roles 1 - It could be at the head of the list or later in the list
 		if (theDatabase.getCurrentNewStudent()) {
 			if (notTheFirst)
 				theCurrentRoles += ", Student"; 
@@ -167,7 +155,7 @@ public class ControllerAddRemoveRoles {
 			}
 		}
 
-		// Staff - It could be at the head of the list or later in the list
+		// Roles 2 - It could be at the head of the list or later in the list
 		if (theDatabase.getCurrentNewStaff()) {
 			if (notTheFirst)
 				theCurrentRoles += ", Staff"; 
@@ -218,7 +206,7 @@ public class ControllerAddRemoveRoles {
 			// If an actual role was selected, update the database entry for that user for the role
 			if (theDatabase.updateUserRole(ViewAddRemoveRoles.theSelectedUser,
 					ViewAddRemoveRoles.theAddRole, "true") ) {
-				ViewAddRemoveRoles.combobox_SelectRoleToAdd = new ComboBox <String>();
+				// Reuse the existing ComboBox widget instead of recreating it to avoid CSS issues
 				ViewAddRemoveRoles.combobox_SelectRoleToAdd.setItems(FXCollections.
 					observableArrayList(ViewAddRemoveRoles.addList));
 				ViewAddRemoveRoles.combobox_SelectRoleToAdd.getSelectionModel().clearAndSelect(0);		
@@ -247,9 +235,9 @@ public class ControllerAddRemoveRoles {
 			// If an actual role was selected, update the database entry for that user for the role
 			if (theDatabase.updateUserRole(ViewAddRemoveRoles.theSelectedUser, 
 					ViewAddRemoveRoles.theRemoveRole, "false") ) {
-				ViewAddRemoveRoles.combobox_SelectRoleToRemove = new ComboBox <String>();
+				// Reuse the existing ComboBox widget instead of recreating it to avoid CSS issues
 				ViewAddRemoveRoles.combobox_SelectRoleToRemove.setItems(FXCollections.
-					observableArrayList(ViewAddRemoveRoles.addList));
+					observableArrayList(ViewAddRemoveRoles.removeList));
 				ViewAddRemoveRoles.combobox_SelectRoleToRemove.getSelectionModel().
 					clearAndSelect(0);		
 				setupSelectedUser();

@@ -13,9 +13,9 @@ import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Alert.AlertType;
+import javafx.scene.text.Font;
 import javafx.scene.layout.Pane;
 import javafx.scene.shape.Line;
-import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import database.Database;
 import entityClasses.User;
@@ -134,6 +134,7 @@ public class ViewAdminHome {
 
 	private static Scene theAdminHomeScene;		// The shared Scene each invocation populates
 	private static final int theRole = 1;		// Admin: 1; Student: 2; Staff: 3
+	
 
 	/*-*******************************************************************************************
 
@@ -391,7 +392,7 @@ public class ViewAdminHome {
 	 * @param y		The location from the top (y axis)
 	 */
 	private void setupComboBoxUI(ComboBox <String> c, String ff, double f, double w, double x, double y){
-		c.setStyle("-fx-font: " + f + " " + ff + ";");
+		c.setStyle("-fx-font-family: '" + ff + "'; -fx-font-size: " + f + "px;");
 		c.setMinWidth(w);
 		c.setLayoutX(x);
 		c.setLayoutY(y);

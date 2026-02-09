@@ -201,7 +201,41 @@ public class Database {
 	    }
 		return 0;
 	}
+	
+	
+	/*******
+	 * <p> Method: getAllUsers </p>
+	 * * <p> Description: Returns a 2D list of User details (Username, First + Last Name, Email, Roles).</p>
+	 */
+	public ArrayList<ArrayList<String>> getAllUsers() {
+	    // Create the master list to hold the rows
+	    ArrayList<ArrayList<String>> allUsersData = new ArrayList<>();
 
+	    // Get the list of usernames
+	    List<String> userNames = getUserList(); 
+	    
+	    // Remove the "<Select a User>" option from the list of usernames
+	    userNames.remove("<Select a User>");
+
+	    // Loop through every user
+	    for (String userName : userNames) {
+	        // Create the inner list (the row for this specific user)
+	        ArrayList<String> singleUserRow = new ArrayList<>();
+
+	        // Add the columns
+	        singleUserRow.add(userName);
+	        singleUserRow.add(getFirstName(userName) + " " + getLastName(userName));
+	        singleUserRow.add(getEmailAddress(userName));
+	        singleUserRow.add(getRoles(userName)); 
+
+	        // Add this row to the master list
+	        allUsersData.add(singleUserRow);
+	    }
+
+	    return allUsersData;
+	}
+	
+	
 /*******
  * <p> Method: register(User user) </p>
  * 
@@ -255,7 +289,7 @@ public class Database {
 /*******
  *  <p> Method: List getUserList() </p>
  *  
- *  <P> Description: Generate an List of Strings, one for each user in the database,
+ *  <P> Description: Generate a List of Strings, one for each user in the database,
  *  starting with "<Select User>" at the start of the list. </p>
  *  
  *  @return a list of userNames found in the database.
@@ -534,6 +568,38 @@ public class Database {
 	        e.printStackTrace();
 	    }
 	    return "";
+	}
+	
+	/*******
+	 * <p> Method: getRoles(String username) </p>
+	 * * <p> Description: specific helper to format roles as a string.</p>
+	 */
+	public String getRoles(String username) {
+	    StringBuilder roles = new StringBuilder();
+	    String query = "SELECT adminRole, newStudent, newStaff FROM userDB WHERE userName = ?";
+	    
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setString(1, username);
+	        ResultSet rs = pstmt.executeQuery();
+	        
+	        if (rs.next()) {
+	            boolean isAdmin = rs.getBoolean("adminRole");
+	            boolean isStudent = rs.getBoolean("newStudent");
+	            boolean isStaff = rs.getBoolean("newStaff");
+	            
+	            if (isAdmin) roles.append("Admin, ");
+	            if (isStudent) roles.append("Student, ");
+	            if (isStaff) roles.append("Staff, ");
+	            
+	            // Remove trailing comma and space if roles exist
+	            if (roles.length() > 0) {
+	                roles.setLength(roles.length() - 2);
+	            }
+	        }
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	    return roles.toString();
 	}
 
 	

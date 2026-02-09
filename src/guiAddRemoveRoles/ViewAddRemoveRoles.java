@@ -223,9 +223,16 @@ public class ViewAddRemoveRoles {
 		
 		// This is the end of the GUI Widgets for the page
 		
-		// Due to the very dynamic nature of this page, setting the widget into the Root Pane has 
-		// has been delegated to the repaintTheWindow and doSelectUser controller methods.
-		// Don't follow this pattern if formatting of the page does not change dynamically.
+		// Place all widgets into the Root Pane once. The controller will use visibility to
+		// show/hide widgets based on application state instead of clearing/re-adding them.
+		// This avoids CSS stylesheet reapplication issues.
+		theRootPane.getChildren().addAll(
+			label_PageTitle, label_UserDetails, button_UpdateThisUser, line_Separator1,
+			label_SelectUser, combobox_SelectUser,
+			label_CurrentRoles, label_SelectRoleToBeAdded, combobox_SelectRoleToAdd, button_AddRole,
+			label_SelectRoleToBeRemoved, combobox_SelectRoleToRemove, button_RemoveRole,
+			line_Separator4, button_Return, button_Logout, button_Quit
+		);
 	}	
 
 	/*-*******************************************************************************************
