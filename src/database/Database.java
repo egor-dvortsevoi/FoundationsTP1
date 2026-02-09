@@ -1514,6 +1514,65 @@ public class Database {
 	    }
 	    return posts;
 	}
+	
+	/*******
+	 * Search posts by keyword and optional thread (T3.4)
+	 */
+	public List<Post> searchPosts(String keyword, String threadName) {
+
+	    List<Post> posts = new ArrayList<>();
+
+	    StringBuilder sql = new StringBuilder(
+	        "SELECT * FROM postsDB WHERE isDeleted = FALSE"
+	    );
+
+	    if (threadName != null && !"All".equals(threadName)) {
+	        sql.append(" AND threadName = ?");
+	    }
+
+	    if (keyword != null && !keyword.isBlank()) {
+	        sql.append(" AND (LOWER(title) LIKE ? OR LOWER(content) LIKE ?)");
+	    }
+
+	    sql.append(" ORDER BY timestamp DESC");
+
+	    try (PreparedStatement pstmt =
+	            connection.prepareStatement(sql.toString())) {
+
+	        int index = 1;
+
+	        if (threadName != null && !"All".equals(threadName)) {
+	            pstmt.setString(index++, threadName);
+	        }
+
+	        if (keyword != null && !keyword.isBlank()) {
+	            String like = "%" + keyword.toLowerCase() + "%";
+	            pstmt.setString(index++, like);
+	            pstmt.setString(index++, like);
+	        }
+
+	        ResultSet rs = pstmt.executeQuery();
+
+	        while (rs.next()) {
+	            posts.add(new Post(
+	                rs.getInt("id"),
+	                rs.getString("authorUsername"),
+	                rs.getString("threadName"),
+	                rs.getString("title"),
+	                rs.getString("content"),
+	                rs.getTimestamp("timestamp"),
+	                rs.getBoolean("isDeleted")
+	            ));
+	        }
+
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+
+	    return posts;
+	}
+
+	
 
 
 	/*******
