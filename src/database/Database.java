@@ -1,11 +1,6 @@
 package database;
 
 import java.sql.*;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
-
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -212,11 +207,34 @@ public class Database {
 		return 0;
 	}
 	
-	//dgkahjsdafajkfvkjahfvjghv
-	/*******
-	 * <p> Method: getAllUsers </p>
-	 * * <p> Description: Returns a 2D list of User details (Username, First + Last Name, Email, Roles).</p>
-	 */
+/*******
+ * <p> Method: getNumberOfAdmins </p>
+ * 
+ * <p> Description: Returns an integer .of the number of users currently have the role Admin in the user database. </p>
+ * 
+ * @return the number of admin users in the database.
+ * 
+ */	
+		
+	public int getNumberOfAdmins() {
+		String query = "SELECT COUNT(*) AS count FROM userDB WHERE adminRole = true";
+		try {
+			ResultSet resultSet = statement.executeQuery(query);
+			if (resultSet.next()) {
+				return resultSet.getInt("count");
+			}
+		} catch (SQLException e) {
+	        return 0;
+	    }
+		return 0;
+	}
+			
+	
+	
+/*******
+ * <p> Method: getAllUsers </p>
+ * * <p> Description: Returns a 2D list of User details (Username, First + Last Name, Email, Roles).</p>
+ */
 	public ArrayList<ArrayList<String>> getAllUsers() {
 	    // Create the master list to hold the rows
 	    ArrayList<ArrayList<String>> allUsersData = new ArrayList<>();
@@ -244,6 +262,34 @@ public class Database {
 
 	    return allUsersData;
 	}
+	
+	
+/*******
+ * <p> Method: isUserAdmin </p>
+ * 
+ * <p> Description: Returns a boolean. True if the specified user is currently an admin. </p>
+ * 
+ * @param username to check
+ * @return true if adminRole is TRUE, else false
+ * 
+ */		
+		
+	public boolean isUserAdmin(String userName) {
+	String query = "SELECT adminRole FROM userDB WHERE userName = ?";
+	try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+		pstmt.setString(1, userName);
+		ResultSet rs = pstmt.executeQuery();
+		if (rs.next()) {
+			return rs.getBoolean("adminRole");
+		}
+	}
+	catch (SQLException e) { e.printStackTrace();}
+	
+	
+	return false;
+	}
+		
+		
 	
 	
 /*******
@@ -1039,7 +1085,14 @@ public class Database {
 	 */
 	// Update a users role
 	public boolean updateUserRole(String username, String role, String value) {
+		boolean newValue = Boolean.parseBoolean(value);
 		if (role.compareTo("Admin") == 0) {
+			
+			// Can't remove the last admin
+			if(!newValue) { //removing admin
+				if(isUserAdmin(username) && getNumberOfAdmins() <= 1) return false;
+			}
+			
 			String query = "UPDATE userDB SET adminRole = ? WHERE username = ?";
 			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
 				pstmt.setString(1, value);
