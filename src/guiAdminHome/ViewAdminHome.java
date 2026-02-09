@@ -118,6 +118,7 @@ public class ViewAdminHome {
 	// return is to a fixed page as opposed to the actual page that invoked the pages.
 	protected static Button button_Logout = new Button("Logout");
 	protected static Button button_Quit = new Button("Quit");
+	protected static Button button_SwitchRole = new Button("Switch Role");
 
 	// This is the end of the GUI objects for the page.
 	
@@ -177,9 +178,15 @@ public class ViewAdminHome {
 		theDatabase.getUserAccountDetails(user.getUserName());		// Fetch this user's data
 		applicationMain.FoundationsMain.activeHomePage = theRole;	// Set this as the active Home																	// UserUpdate page
 
+		// Refresh the user's roles from the database so the Switch Role button is accurate
+		theUser.setAdminRole(theDatabase.getCurrentAdminRole());
+		theUser.setStudentUser(theDatabase.getCurrentNewStudent());
+		theUser.setStaffUser(theDatabase.getCurrentNewStaff());
+
 		// Set the role for potential users to the default (No role selected)
 		combobox_SelectRole.getSelectionModel().select(0);
-				
+		// Show the Switch Role button only if the user has multiple roles
+		button_SwitchRole.setVisible(theUser.getNumRoles() > 1);				
 		// Set the title for the window, display the page, and wait for the Admin to do something
 		theStage.setTitle("CSE 360 Foundation Code: Admin Home Page");
 		theStage.setScene(theAdminHomeScene);						// Set this page onto the stage
@@ -286,6 +293,9 @@ public class ViewAdminHome {
 		setupButtonUI(button_Quit, "Dialog", 18, 250, Pos.CENTER, 300, 540);
 		button_Quit.setOnAction((_) -> {ControllerAdminHome.performQuit(); });
 
+		setupButtonUI(button_SwitchRole, "Dialog", 18, 180, Pos.CENTER, 580, 540);
+		button_SwitchRole.setOnAction((_) -> {ControllerAdminHome.performSwitchRole(); });
+
 		// This is the end of the GUI initialization code
 		
 		// Place all of the widget items into the Root Pane's list of children
@@ -305,8 +315,9 @@ public class ViewAdminHome {
     		button_AddRemoveRoles,
     		line_Separator4, 
     		button_Logout,
-    		button_Quit
-    		);
+			button_Quit,
+			button_SwitchRole
+			);
 		
 		// With theRootPane set up with the common widgets, it is up to displayAdminHome to show
 		// that Pane to the user after the dynamic elements of the widgets have been updated.

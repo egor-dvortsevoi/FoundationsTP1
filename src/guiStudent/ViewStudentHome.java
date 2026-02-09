@@ -8,9 +8,14 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+
 import javafx.scene.control.CheckBox;
+
+import javafx.scene.control.TextInputDialog;
+
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.Pane;
 import javafx.scene.shape.Line;
@@ -74,7 +79,7 @@ public class ViewStudentHome {
 	protected static Label label_NewPostTitle = new Label("Title:");
 	protected static TextField text_NewPostTitle = new TextField();
 	protected static Label label_NewPostThread = new Label("Thread:");
-	protected static TextField text_NewPostThread = new TextField();
+	protected static ComboBox<String> combo_NewPostThread = new ComboBox<>();
 	protected static Label label_NewPostContent = new Label("Content:");
 	protected static TextArea text_NewPostContent = new TextArea();
 	protected static Button button_SubmitPost = new Button("Submit Post");
@@ -93,6 +98,7 @@ public class ViewStudentHome {
 	// logging out.
 	protected static Button button_Logout = new Button("Logout");
 	protected static Button button_Quit = new Button("Quit");
+	protected static Button button_SwitchRole = new Button("Switch Role");
 
 	// This is the end of the GUI objects for the page.
 	
@@ -153,6 +159,11 @@ public class ViewStudentHome {
 		theDatabase.getUserAccountDetails(user.getUserName());
 		applicationMain.FoundationsMain.activeHomePage = theRole;
 		
+		// Refresh the user's roles from the database so the Switch Role button is accurate
+		theUser.setAdminRole(theDatabase.getCurrentAdminRole());
+		theUser.setStudentUser(theDatabase.getCurrentNewStudent());
+		theUser.setStaffUser(theDatabase.getCurrentNewStaff());
+		
 		label_UserDetails.setText("User: " + theUser.getUserName());
 		
 		// Refresh the posts list each time we display this page
@@ -160,6 +171,9 @@ public class ViewStudentHome {
 		
 		// Hide the new post form in case it was left visible
 		showNewPostForm(false);
+
+		// Show the Switch Role button only if the user has multiple roles
+		button_SwitchRole.setVisible(theUser.getNumRoles() > 1);
 				
 		// Set the title for the window, display the page, and wait for the Admin to do something
 		theStage.setTitle("CSE 360 Foundations: Student Home Page");
@@ -223,10 +237,9 @@ public class ViewStudentHome {
 		text_NewPostTitle.setPromptText("Enter post title");
 		
 		setupLabelUI(label_NewPostThread, "Arial", 14, 60, Pos.BASELINE_LEFT, 20, 145);
-		text_NewPostThread.setLayoutX(90);
-		text_NewPostThread.setLayoutY(142);
-		text_NewPostThread.setPrefWidth(200);
-		text_NewPostThread.setPromptText("Thread name (optional)");
+		combo_NewPostThread.setLayoutX(90);
+		combo_NewPostThread.setLayoutY(142);
+		combo_NewPostThread.setPrefWidth(200);
 		
 		setupLabelUI(label_NewPostContent, "Arial", 14, 60, Pos.BASELINE_LEFT, 20, 180);
 		text_NewPostContent.setLayoutX(90);
@@ -259,9 +272,13 @@ public class ViewStudentHome {
         setupButtonUI(button_Quit, "Dialog", 18, 250, Pos.CENTER, 300, 540);
         button_Quit.setOnAction((_) -> {ControllerStudentHome.performQuit(); });
 
+        setupButtonUI(button_SwitchRole, "Dialog", 18, 180, Pos.CENTER, 580, 540);
+        button_SwitchRole.setOnAction((_) -> {ControllerStudentHome.performSwitchRole(); });
+
 		// This is the end of the GUI initialization code
 		
 		// Place all of the widget items into the Root Pane's list of children
+
         theRootPane.getChildren().addAll(
         	    label_PageTitle, label_UserDetails, button_UpdateThisUser, line_Separator1,
 
@@ -278,6 +295,7 @@ public class ViewStudentHome {
 
          
         
+
 }
 	
 	
@@ -342,8 +360,11 @@ public class ViewStudentHome {
 		button_ViewPost.setVisible(!show);
 		if (show) {
 			text_NewPostTitle.setText("");
-			text_NewPostThread.setText("");
 			text_NewPostContent.setText("");
+			// Refresh the thread list and default to "General"
+			combo_NewPostThread.getItems().clear();
+			combo_NewPostThread.getItems().addAll(theDatabase.getAllThreadNames());
+			combo_NewPostThread.setValue("General");
 		}
 	}
 	
@@ -354,7 +375,7 @@ public class ViewStudentHome {
 		label_NewPostTitle.setVisible(visible);
 		text_NewPostTitle.setVisible(visible);
 		label_NewPostThread.setVisible(visible);
-		text_NewPostThread.setVisible(visible);
+		combo_NewPostThread.setVisible(visible);
 		label_NewPostContent.setVisible(visible);
 		text_NewPostContent.setVisible(visible);
 		button_SubmitPost.setVisible(visible);
