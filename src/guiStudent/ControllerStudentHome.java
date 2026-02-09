@@ -54,14 +54,25 @@ public class ControllerStudentHome {
 	 */
 	protected static void refreshPostList() {
 		ViewStudentHome.listView_Posts.getItems().clear();
-		List<Post> posts = theDatabase.getAllPosts();
-		ViewStudentHome.currentPosts = posts;
-		for (Post p : posts) {
+		boolean unreadOnly = ViewStudentHome.checkbox_UnreadOnly.isSelected();
+		String username = ViewStudentHome.theUser.getUserName();
+		List<Post> allPosts = theDatabase.getAllPosts();
+		ViewStudentHome.currentPosts = new java.util.ArrayList<>();
+		for (Post p : allPosts) {
+			int unreadCount = theDatabase.getUnreadReplyCount(username, p.getId());
+			if (unreadOnly && unreadCount == 0) {
+				continue;
+			}
+			ViewStudentHome.currentPosts.add(p);
 			int replyCount = theDatabase.getReplyCountForPost(p.getId());
 			String threadTag = (p.getThreadName() != null && !p.getThreadName().isEmpty())
 					? "[" + p.getThreadName() + "] " : "[General] ";
 			String display = threadTag + p.getTitle() + "  [" + p.getAuthorUsername() + "]"
-					+ "  (" + replyCount + " replies)";
+					+ "  (" + replyCount + " replies";
+			if (unreadCount > 0) {
+				display += ", " + unreadCount + " unread";
+			}
+			display += ")";
 			if (p.getTimestamp() != null) {
 				display += "  - " + p.getTimestamp().toString();
 			}

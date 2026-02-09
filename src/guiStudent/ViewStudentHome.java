@@ -11,6 +11,7 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.Pane;
@@ -67,6 +68,8 @@ public class ViewStudentHome {
 	protected static ListView<String> listView_Posts = new ListView<>();
 	protected static Button button_NewPost = new Button("New Post");
 	protected static Button button_ViewPost = new Button("View Post");
+	protected static CheckBox checkbox_UnreadOnly =
+			new CheckBox("Show only posts with unread replies");
 	
 	// New Post form widgets (initially hidden)
 	protected static Label label_NewPostTitle = new Label("Title:");
@@ -219,6 +222,10 @@ public class ViewStudentHome {
 		setupButtonUI(button_ViewPost, "Dialog", 14, 120, Pos.CENTER, 150, 395);
 		button_ViewPost.setOnAction((_) -> { ControllerStudentHome.viewSelectedPost(); });
 		
+		checkbox_UnreadOnly.setLayoutX(290);
+		checkbox_UnreadOnly.setLayoutY(398);
+		checkbox_UnreadOnly.setOnAction((_) -> { ControllerStudentHome.refreshPostList(); });
+		
 		// New Post form — initially hidden, overlays the post list area
 		setupLabelUI(label_NewPostTitle, "Arial", 14, 60, Pos.BASELINE_LEFT, 20, 110);
 		text_NewPostTitle.setLayoutX(90);
@@ -268,9 +275,10 @@ public class ViewStudentHome {
 		// This is the end of the GUI initialization code
 		
 		// Place all of the widget items into the Root Pane's list of children
+
          theRootPane.getChildren().addAll(
 			label_PageTitle, label_UserDetails, button_UpdateThisUser, line_Separator1,
-			label_Posts, listView_Posts, button_NewPost, button_ViewPost,
+			label_Posts, listView_Posts, checkbox_UnreadOnly, button_NewPost, button_ViewPost,
 			label_NewPostTitle, text_NewPostTitle,
 			label_NewPostThread, combo_NewPostThread,
 			label_NewPostContent, text_NewPostContent,
@@ -336,6 +344,7 @@ public class ViewStudentHome {
 		// Hide post list and buttons when showing the form
 		label_Posts.setVisible(!show);
 		listView_Posts.setVisible(!show);
+		checkbox_UnreadOnly.setVisible(!show);
 		button_NewPost.setVisible(!show);
 		button_ViewPost.setVisible(!show);
 		if (show) {

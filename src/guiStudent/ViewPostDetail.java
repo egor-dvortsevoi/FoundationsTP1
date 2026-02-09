@@ -93,6 +93,7 @@ public class ViewPostDetail {
         listView_Replies.getItems().clear();
         List<Reply> replies = theDatabase.getRepliesForPost(thePost.getId());
         for (Reply r : replies) {
+            theDatabase.markReplyRead(theUser.getUserName(), r.getId());
             String display = r.getAuthorUsername() + " (" + r.getTimestamp() + "):\n" + r.getContent();
             listView_Replies.getItems().add(display);
         }
