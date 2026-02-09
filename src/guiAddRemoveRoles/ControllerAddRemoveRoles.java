@@ -71,7 +71,7 @@ public class ControllerAddRemoveRoles {
 	 * 
 	 */
 	protected static void repaintTheWindow() {
-		// Defermine which of the two views to show to the user
+		// Determine which of the two views to show to the user
 		if (ViewAddRemoveRoles.theSelectedUser.compareTo("<Select a User>") == 0) {
 			// Only show the request to select a user to be updated and the ComboBox
 			// Hide widgets for user selection mode
@@ -112,6 +112,8 @@ public class ControllerAddRemoveRoles {
 	 * 
 	 */
 	private static void setupSelectedUser() {
+		ViewAddRemoveRoles.label_ErrorMessage.setText("");
+		ViewAddRemoveRoles.label_ErrorMessage.setVisible(false);
 		System.out.println("*** Entering setupSelectedUser");
 		
 		// Create the list of roles that could be added for the currently selected user (e.g., Do
@@ -185,7 +187,6 @@ public class ControllerAddRemoveRoles {
 
 		// Repaint the window showing this new values
 		repaintTheWindow();
-
 	}
 	
 	
