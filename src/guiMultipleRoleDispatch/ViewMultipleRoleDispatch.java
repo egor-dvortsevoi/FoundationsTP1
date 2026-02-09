@@ -54,7 +54,7 @@ public class ViewMultipleRoleDispatch {
 
 	// GUI Area 2: This area consists of a label to ask the user what roles to place, a ComboBox 
 	// so the user can select the role, and a button to perform that role.
-	private static Label label_WhichRole = new Label("Which role do you wish to play:");
+	private static Label label_WhichRole = new Label("Which role do you wish to use:");
 	protected static ComboBox <String> combobox_SelectRole = new ComboBox <String>();
 	private static Button button_PerformRole = new Button("Perform Role");		
 	

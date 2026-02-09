@@ -1,10 +1,12 @@
 package guiStudent;
 
 import java.util.List;
+import java.util.Optional;
 
 import database.Database;
 import entityClasses.Post;
 import entityClasses.Reply;
+import javafx.scene.control.TextInputDialog;
 
 
 /*******
@@ -56,7 +58,9 @@ public class ControllerStudentHome {
 		ViewStudentHome.currentPosts = posts;
 		for (Post p : posts) {
 			int replyCount = theDatabase.getReplyCountForPost(p.getId());
-			String display = p.getTitle() + "  [" + p.getAuthorUsername() + "]"
+			String threadTag = (p.getThreadName() != null && !p.getThreadName().isEmpty())
+					? "[" + p.getThreadName() + "] " : "[General] ";
+			String display = threadTag + p.getTitle() + "  [" + p.getAuthorUsername() + "]"
 					+ "  (" + replyCount + " replies)";
 			if (p.getTimestamp() != null) {
 				display += "  - " + p.getTimestamp().toString();
@@ -70,7 +74,10 @@ public class ControllerStudentHome {
 	 */
 	protected static void submitNewPost() {
 		String title = ViewStudentHome.text_NewPostTitle.getText().trim();
-		String thread = ViewStudentHome.text_NewPostThread.getText().trim();
+		String thread = ViewStudentHome.combo_NewPostThread.getValue();
+		if (thread == null || thread.trim().isEmpty()) {
+			thread = "General";
+		}
 		String content = ViewStudentHome.text_NewPostContent.getText().trim();
 		
 		if (title.isEmpty()) {
@@ -90,6 +97,36 @@ public class ControllerStudentHome {
 		ViewStudentHome.alertPostSuccess.showAndWait();
 		ViewStudentHome.showNewPostForm(false);
 		refreshPostList();
+	}
+
+	/**********
+	 * Prompt the student for a new thread name, create it, and select it in the ComboBox.
+	 */
+	protected static void createNewThread() {
+		TextInputDialog dialog = new TextInputDialog();
+		dialog.setTitle("New Thread");
+		dialog.setHeaderText("Create a New Thread");
+		dialog.setContentText("Thread name:");
+		Optional<String> result = dialog.showAndWait();
+		result.ifPresent(name -> {
+			String trimmed = name.trim();
+			if (trimmed.isEmpty()) {
+				ViewStudentHome.alertPostError.setContentText("Thread name cannot be empty.");
+				ViewStudentHome.alertPostError.showAndWait();
+				return;
+			}
+			boolean created = theDatabase.createThread(trimmed, ViewStudentHome.theUser.getUserName());
+			if (!created) {
+				ViewStudentHome.alertPostError.setContentText(
+						"Thread already exists or could not be created.");
+				ViewStudentHome.alertPostError.showAndWait();
+				return;
+			}
+			// Refresh the ComboBox and select the new thread
+			ViewStudentHome.combo_NewPostThread.getItems().clear();
+			ViewStudentHome.combo_NewPostThread.getItems().addAll(theDatabase.getAllThreadNames());
+			ViewStudentHome.combo_NewPostThread.setValue(trimmed);
+		});
 	}
 
 	/**********
@@ -148,6 +185,14 @@ public class ControllerStudentHome {
 	 */
 	protected static void performLogout() {
 		guiUserLogin.ViewUserLogin.displayUserLogin(ViewStudentHome.theStage);
+	}
+
+	/**********
+	 * Navigate back to the Multiple Role Dispatch page to switch roles.
+	 */
+	protected static void performSwitchRole() {
+		guiMultipleRoleDispatch.ViewMultipleRoleDispatch.displayMultipleRoleDispatch(
+				ViewStudentHome.theStage, ViewStudentHome.theUser);
 	}
 	
 	/**********

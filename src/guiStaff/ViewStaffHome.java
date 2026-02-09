@@ -65,6 +65,7 @@ public class ViewStaffHome {
 	// logging out.
 	protected static Button button_Logout = new Button("Logout");
 	protected static Button button_Quit = new Button("Quit");
+	protected static Button button_SwitchRole = new Button("Switch Role");
 
 	// This is the end of the GUI objects for the page.
 	
@@ -123,7 +124,15 @@ public class ViewStaffHome {
 		theDatabase.getUserAccountDetails(user.getUserName());
 		applicationMain.FoundationsMain.activeHomePage = theRole;
 		
+		// Refresh the user's roles from the database so the Switch Role button is accurate
+		theUser.setAdminRole(theDatabase.getCurrentAdminRole());
+		theUser.setStudentUser(theDatabase.getCurrentNewStudent());
+		theUser.setStaffUser(theDatabase.getCurrentNewStaff());
+		
 		label_UserDetails.setText("User: " + theUser.getUserName());// Set the username
+
+		// Show the Switch Role button only if the user has multiple roles
+		button_SwitchRole.setVisible(theUser.getNumRoles() > 1);
 
 		// Set the title for the window, display the page, and wait for the Admin to do something
 		theStage.setTitle("CSE 360 Foundations: Staff Home Page");
@@ -174,12 +183,15 @@ public class ViewStaffHome {
         setupButtonUI(button_Quit, "Dialog", 18, 250, Pos.CENTER, 300, 540);
         button_Quit.setOnAction((_) -> {ControllerStaffHome.performQuit(); });
 
+        setupButtonUI(button_SwitchRole, "Dialog", 18, 180, Pos.CENTER, 580, 540);
+        button_SwitchRole.setOnAction((_) -> {ControllerStaffHome.performSwitchRole(); });
+
 		// This is the end of the GUI initialization code
 		
 		// Place all of the widget items into the Root Pane's list of children
         theRootPane.getChildren().addAll(
 			label_PageTitle, label_UserDetails, button_UpdateThisUser, line_Separator1,
-	        line_Separator4, button_Logout, button_Quit);
+	        line_Separator4, button_Logout, button_Quit, button_SwitchRole);
 	}
 	
 	
