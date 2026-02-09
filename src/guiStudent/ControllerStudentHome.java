@@ -230,4 +230,29 @@ public class ControllerStudentHome {
 	protected static void performQuit() {
 		System.exit(0);
 	}
+	
+	/**********
+	 * Delete the currently viewed post (author only).
+	 */
+	protected static void deleteCurrentPost() {
+
+		Post post = ViewPostDetail.thePost;
+
+		if (post == null) {
+			return;
+		}
+
+		theDatabase.deleteOwnPost(
+			post.getId(),
+			ViewPostDetail.theUser.getUserName()
+		);
+
+		// Return to student home after deletion
+		ViewStudentHome.displayStudentHome(
+			ViewStudentHome.theStage,
+			ViewStudentHome.theUser
+		);
+	}
+
+	
 }
