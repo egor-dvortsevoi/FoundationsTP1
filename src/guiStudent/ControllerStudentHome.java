@@ -7,7 +7,7 @@ import database.Database;
 import entityClasses.Post;
 import entityClasses.Reply;
 import javafx.scene.control.TextInputDialog;
-
+import java.time.format.DateTimeFormatter;
 
 /*******
  * <p> Title: ControllerStudentHome Class. </p>
@@ -49,34 +49,36 @@ public class ControllerStudentHome {
 	// Reference for the in-memory database so this package has access
 	private static Database theDatabase = applicationMain.FoundationsMain.database;
 
+	private static final DateTimeFormatter TIMESTAMP_FMT =
+			DateTimeFormatter.ofPattern("MM-dd-yyyy HH:mm:ss");
+
 	/**********
 	 * Refresh the list of posts displayed on the Student Home page.
 	 */
 	protected static void refreshPostList() {
-		ViewStudentHome.listView_Posts.getItems().clear();
+		ViewStudentHome.tableView_Posts.getItems().clear();
 		boolean unreadOnly = ViewStudentHome.checkbox_UnreadOnly.isSelected();
+		boolean myPostsOnly = ViewStudentHome.checkbox_MyPostsOnly.isSelected();
 		String username = ViewStudentHome.theUser.getUserName();
-		List<Post> allPosts = theDatabase.getAllPosts();
+		List<Post> allPosts = myPostsOnly
+				? theDatabase.getMyPosts(username)
+				: theDatabase.getAllPosts();
 		ViewStudentHome.currentPosts = new java.util.ArrayList<>();
 		for (Post p : allPosts) {
 			int unreadCount = theDatabase.getUnreadReplyCount(username, p.getId());
 			if (unreadOnly && unreadCount == 0) {
 				continue;
 			}
+			int idx = ViewStudentHome.currentPosts.size();
 			ViewStudentHome.currentPosts.add(p);
 			int replyCount = theDatabase.getReplyCountForPost(p.getId());
-			String threadTag = (p.getThreadName() != null && !p.getThreadName().isEmpty())
-					? "[" + p.getThreadName() + "] " : "[General] ";
-			String display = threadTag + p.getTitle() + "  [" + p.getAuthorUsername() + "]"
-					+ "  (" + replyCount + " replies";
-			if (unreadCount > 0) {
-				display += ", " + unreadCount + " unread";
-			}
-			display += ")";
-			if (p.getTimestamp() != null) {
-				display += "  - " + p.getTimestamp().toString();
-			}
-			ViewStudentHome.listView_Posts.getItems().add(display);
+			String title = p.isDeleted() ? "[Deleted]" : p.getTitle();
+			String thread = (p.getThreadName() != null && !p.getThreadName().isEmpty())
+					? p.getThreadName() : "General";
+			String date = (p.getTimestamp() != null)
+					? p.getTimestamp().toLocalDateTime().format(TIMESTAMP_FMT) : "";
+			ViewStudentHome.tableView_Posts.getItems().add(
+					new ViewStudentHome.PostRow(title, thread, replyCount, unreadCount, date, idx));
 		}
 	}
 
@@ -144,14 +146,14 @@ public class ControllerStudentHome {
 	 * View the currently selected post in the post list.
 	 */
 	protected static void viewSelectedPost() {
-		int selectedIndex = ViewStudentHome.listView_Posts.getSelectionModel().getSelectedIndex();
-		if (selectedIndex < 0 || ViewStudentHome.currentPosts == null 
-				|| selectedIndex >= ViewStudentHome.currentPosts.size()) {
+		ViewStudentHome.PostRow selectedRow = ViewStudentHome.tableView_Posts.getSelectionModel().getSelectedItem();
+		if (selectedRow == null || ViewStudentHome.currentPosts == null
+				|| selectedRow.getPostIndex() >= ViewStudentHome.currentPosts.size()) {
 			ViewStudentHome.alertPostError.setContentText("Please select a post to view.");
 			ViewStudentHome.alertPostError.showAndWait();
 			return;
 		}
-		Post selectedPost = ViewStudentHome.currentPosts.get(selectedIndex);
+		Post selectedPost = ViewStudentHome.currentPosts.get(selectedRow.getPostIndex());
 		// Re-fetch from DB to get latest data
 		Post freshPost = theDatabase.getPostById(selectedPost.getId());
 		if (freshPost == null) {

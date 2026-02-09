@@ -2,12 +2,15 @@ package guiStudent;
 
 import java.util.List;
 
+import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.ListView;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
@@ -65,11 +68,18 @@ public class ViewStudentHome {
 
 	// GUI Area 2: Discussion posts list and "New Post" button
 	protected static Label label_Posts = new Label("Discussion Posts");
-	protected static ListView<String> listView_Posts = new ListView<>();
+	protected static TableView<PostRow> tableView_Posts = new TableView<>();
+	protected static TableColumn<PostRow, String> col_Title = new TableColumn<>("Title");
+	protected static TableColumn<PostRow, String> col_Thread = new TableColumn<>("Thread");
+	protected static TableColumn<PostRow, Number> col_Replies = new TableColumn<>("Replies");
+	protected static TableColumn<PostRow, Number> col_Unread = new TableColumn<>("Unread");
+	protected static TableColumn<PostRow, String> col_Date = new TableColumn<>("Date");
 	protected static Button button_NewPost = new Button("New Post");
 	protected static Button button_ViewPost = new Button("View Post");
 	protected static CheckBox checkbox_UnreadOnly =
 			new CheckBox("Show only posts with unread replies");
+	protected static CheckBox checkbox_MyPostsOnly =
+			new CheckBox("My Posts Only");
 	
 	// New Post form widgets (initially hidden)
 	protected static Label label_NewPostTitle = new Label("Title:");
@@ -211,10 +221,31 @@ public class ViewStudentHome {
 		// GUI Area 2 — Discussion Posts
 		setupLabelUI(label_Posts, "Arial", 20, 300, Pos.BASELINE_LEFT, 20, 105);
 		
-		listView_Posts.setLayoutX(20);
-		listView_Posts.setLayoutY(135);
-		listView_Posts.setPrefWidth(width - 40);
-		listView_Posts.setPrefHeight(250);
+		// Set up the TableView with sortable columns
+		col_Title.setCellValueFactory(data -> data.getValue().titleProperty());
+		col_Title.setPrefWidth(200);
+		col_Thread.setCellValueFactory(data -> data.getValue().threadProperty());
+		col_Thread.setPrefWidth(100);
+		col_Replies.setCellValueFactory(data -> data.getValue().repliesProperty());
+		col_Replies.setPrefWidth(70);
+		col_Replies.setStyle("-fx-alignment: CENTER;");
+		col_Unread.setCellValueFactory(data -> data.getValue().unreadProperty());
+		col_Unread.setPrefWidth(70);
+		col_Unread.setStyle("-fx-alignment: CENTER;");
+		col_Date.setCellValueFactory(data -> data.getValue().dateProperty());
+		col_Date.setPrefWidth(width - 40 - 200 - 100 - 70 - 70 - 22);
+		
+		tableView_Posts.getColumns().addAll(col_Title, col_Thread, col_Replies, col_Unread, col_Date);
+		tableView_Posts.setLayoutX(20);
+		tableView_Posts.setLayoutY(135);
+		tableView_Posts.setPrefWidth(width - 40);
+		tableView_Posts.setPrefHeight(250);
+		tableView_Posts.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+		tableView_Posts.setOnMouseClicked(event -> {
+			if (event.getClickCount() == 2 && tableView_Posts.getSelectionModel().getSelectedItem() != null) {
+				ControllerStudentHome.viewSelectedPost();
+			}
+		});
 		
 		setupButtonUI(button_NewPost, "Dialog", 14, 120, Pos.CENTER, 20, 395);
 		button_NewPost.setOnAction((_) -> { showNewPostForm(true); });
@@ -222,8 +253,12 @@ public class ViewStudentHome {
 		setupButtonUI(button_ViewPost, "Dialog", 14, 120, Pos.CENTER, 150, 395);
 		button_ViewPost.setOnAction((_) -> { ControllerStudentHome.viewSelectedPost(); });
 		
+		checkbox_MyPostsOnly.setLayoutX(290);
+		checkbox_MyPostsOnly.setLayoutY(395);
+		checkbox_MyPostsOnly.setOnAction((_) -> { ControllerStudentHome.refreshPostList(); });
+		
 		checkbox_UnreadOnly.setLayoutX(290);
-		checkbox_UnreadOnly.setLayoutY(398);
+		checkbox_UnreadOnly.setLayoutY(415);
 		checkbox_UnreadOnly.setOnAction((_) -> { ControllerStudentHome.refreshPostList(); });
 		
 		// New Post form — initially hidden, overlays the post list area
@@ -278,7 +313,8 @@ public class ViewStudentHome {
 
          theRootPane.getChildren().addAll(
 			label_PageTitle, label_UserDetails, button_UpdateThisUser, line_Separator1,
-			label_Posts, listView_Posts, checkbox_UnreadOnly, button_NewPost, button_ViewPost,
+			label_Posts, tableView_Posts, checkbox_MyPostsOnly, checkbox_UnreadOnly,
+			button_NewPost, button_ViewPost,
 			label_NewPostTitle, text_NewPostTitle,
 			label_NewPostThread, combo_NewPostThread,
 			label_NewPostContent, text_NewPostContent,
@@ -343,7 +379,8 @@ public class ViewStudentHome {
 		setNewPostFormVisible(show);
 		// Hide post list and buttons when showing the form
 		label_Posts.setVisible(!show);
-		listView_Posts.setVisible(!show);
+		tableView_Posts.setVisible(!show);
+		checkbox_MyPostsOnly.setVisible(!show);
 		checkbox_UnreadOnly.setVisible(!show);
 		button_NewPost.setVisible(!show);
 		button_ViewPost.setVisible(!show);
@@ -369,5 +406,33 @@ public class ViewStudentHome {
 		text_NewPostContent.setVisible(visible);
 		button_SubmitPost.setVisible(visible);
 		button_CancelPost.setVisible(visible);
+	}
+
+	/**
+	 * Data model for a single row in the posts TableView.
+	 */
+	public static class PostRow {
+		private final SimpleStringProperty title;
+		private final SimpleStringProperty thread;
+		private final SimpleIntegerProperty replies;
+		private final SimpleIntegerProperty unread;
+		private final SimpleStringProperty date;
+		private final int postIndex;
+
+		public PostRow(String title, String thread, int replies, int unread, String date, int postIndex) {
+			this.title = new SimpleStringProperty(title);
+			this.thread = new SimpleStringProperty(thread);
+			this.replies = new SimpleIntegerProperty(replies);
+			this.unread = new SimpleIntegerProperty(unread);
+			this.date = new SimpleStringProperty(date);
+			this.postIndex = postIndex;
+		}
+
+		public SimpleStringProperty titleProperty() { return title; }
+		public SimpleStringProperty threadProperty() { return thread; }
+		public SimpleIntegerProperty repliesProperty() { return replies; }
+		public SimpleIntegerProperty unreadProperty() { return unread; }
+		public SimpleStringProperty dateProperty() { return date; }
+		public int getPostIndex() { return postIndex; }
 	}
 }

@@ -1487,14 +1487,14 @@ public class Database {
 	/*******
 	 * <p> Method: List&lt;Post&gt; getAllPosts() </p>
 	 * 
-	 * <p> Description: Retrieves all non-deleted posts ordered by timestamp descending (newest
-	 * first).</p>
+	 * <p> Description: Retrieves all posts ordered by timestamp descending (newest
+	 * first). Deleted posts are included so they can be displayed as [Deleted].</p>
 	 * 
 	 * @return a list of Post objects
 	 */
 	public List<Post> getAllPosts() {
 	    List<Post> posts = new ArrayList<>();
-	    String query = "SELECT * FROM postsDB WHERE isDeleted = FALSE ORDER BY timestamp DESC";
+	    String query = "SELECT * FROM postsDB ORDER BY timestamp DESC";
 	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
 	        ResultSet rs = pstmt.executeQuery();
 	        while (rs.next()) {
@@ -1601,17 +1601,41 @@ public class Database {
 	    return 0;
 	}
 	public void markReplyRead(String username, int replyId) {
-    String query =
-        "MERGE INTO readStatusDB (username, replyId, isRead) " +
-        "KEY (username, replyId) VALUES (?, ?, TRUE)";
-    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-        pstmt.setString(1, username);
-        pstmt.setInt(2, replyId);
-        pstmt.executeUpdate();
-    } catch (SQLException e) {
-        e.printStackTrace();
-    }
-}
+	    String query =
+	        "MERGE INTO readStatusDB (username, replyId, isRead) " +
+	        "KEY (username, replyId) VALUES (?, ?, TRUE)";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setString(1, username);
+	        pstmt.setInt(2, replyId);
+	        pstmt.executeUpdate();
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	}
+
+	/*******
+	 * <p> Method: boolean isReplyRead(String username, int replyId) </p>
+	 * 
+	 * <p> Description: Checks whether a specific reply has been read by the given user.</p>
+	 * 
+	 * @param username the username to check
+	 * @param replyId  the reply id to check
+	 * @return true if the reply has been marked as read by this user
+	 */
+	public boolean isReplyRead(String username, int replyId) {
+	    String query = "SELECT isRead FROM readStatusDB WHERE username = ? AND replyId = ?";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setString(1, username);
+	        pstmt.setInt(2, replyId);
+	        ResultSet rs = pstmt.executeQuery();
+	        if (rs.next()) {
+	            return rs.getBoolean("isRead");
+	        }
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	    return false;
+	}
 
 public int getUnreadReplyCount(String username, int postId) {
     String query =
@@ -1633,6 +1657,40 @@ public int getUnreadReplyCount(String username, int postId) {
     }
     return 0;
 }
+
+/*******
+	 * <p> Method: List&lt;Post&gt; getMyPosts(String username) </p>
+	 * 
+	 * <p> Description: Retrieves all posts authored by the given user,
+	 * ordered by timestamp descending (newest first). Deleted posts are included
+	 * so they can be displayed as [Deleted].</p>
+	 * 
+	 * @param username the author's username
+	 * @return a list of Post objects authored by this user
+	 */
+	public List<Post> getMyPosts(String username) {
+	    List<Post> posts = new ArrayList<>();
+	    String query = "SELECT * FROM postsDB WHERE authorUsername = ? ORDER BY timestamp DESC";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setString(1, username);
+	        ResultSet rs = pstmt.executeQuery();
+	        while (rs.next()) {
+	            Post p = new Post(
+	                rs.getInt("id"),
+	                rs.getString("authorUsername"),
+	                rs.getString("threadName"),
+	                rs.getString("title"),
+	                rs.getString("content"),
+	                rs.getTimestamp("timestamp"),
+	                rs.getBoolean("isDeleted")
+	            );
+	            posts.add(p);
+	        }
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	    return posts;
+	}
 
 /**********
  * Soft delete a post. Only the author may delete their own post.
