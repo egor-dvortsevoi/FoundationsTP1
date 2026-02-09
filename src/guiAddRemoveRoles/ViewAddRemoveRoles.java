@@ -73,6 +73,8 @@ public class ViewAddRemoveRoles {
 	protected static ComboBox <String> combobox_SelectRoleToAdd = new ComboBox <String>();	
 	protected static Label label_SelectRoleToBeRemoved = new Label("Select a role to be removed:");
 	protected static ComboBox <String> combobox_SelectRoleToRemove = new ComboBox <String>();
+	
+	protected static Label label_ErrorMessage = new Label(""); //error message for admin removing by hasaanser
 		
 	// This is a separator and it is used to partition the GUI for various tasks
 	protected static Line line_Separator4 = new Line(20, 525, width-20,525);
@@ -211,6 +213,10 @@ public class ViewAddRemoveRoles {
 		setupLabelUI(label_SelectRoleToBeRemoved, "Arial", 20, 300, Pos.BASELINE_LEFT, 20, 280);	
 		setupComboBoxUI(combobox_SelectRoleToRemove, "Dialog", 16, 150, 280, 275);	
 		
+		setupLabelUI(label_ErrorMessage, "Arial", 16, width - 40, Pos.BASELINE_LEFT, 20, 320);
+		label_ErrorMessage.setStyle("-fx-text-fill: red;");
+		label_ErrorMessage.setVisible(false);
+		
 		// GUI Area 3		
 		setupButtonUI(button_Return, "Dialog", 18, 210, Pos.CENTER, 20, 540);
 		button_Return.setOnAction((_) -> {ControllerAddRemoveRoles.performReturn(); });
@@ -231,6 +237,7 @@ public class ViewAddRemoveRoles {
 			label_SelectUser, combobox_SelectUser,
 			label_CurrentRoles, label_SelectRoleToBeAdded, combobox_SelectRoleToAdd, button_AddRole,
 			label_SelectRoleToBeRemoved, combobox_SelectRoleToRemove, button_RemoveRole,
+			label_ErrorMessage,
 			line_Separator4, button_Return, button_Logout, button_Quit
 		);
 	}	

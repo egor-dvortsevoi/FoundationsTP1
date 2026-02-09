@@ -71,7 +71,7 @@ public class ControllerAddRemoveRoles {
 	 * 
 	 */
 	protected static void repaintTheWindow() {
-		// Defermine which of the two views to show to the user
+		// Determine which of the two views to show to the user
 		if (ViewAddRemoveRoles.theSelectedUser.compareTo("<Select a User>") == 0) {
 			// Only show the request to select a user to be updated and the ComboBox
 			// Hide widgets for user selection mode
@@ -82,6 +82,8 @@ public class ControllerAddRemoveRoles {
 			ViewAddRemoveRoles.label_SelectRoleToBeRemoved.setVisible(false);
 			ViewAddRemoveRoles.combobox_SelectRoleToRemove.setVisible(false);
 			ViewAddRemoveRoles.button_RemoveRole.setVisible(false);
+			
+			ViewAddRemoveRoles.label_ErrorMessage.setVisible(false);
 		}
 		else {
 			// Show all the fields as there is a selected user (as opposed to the prompt)
@@ -96,7 +98,7 @@ public class ControllerAddRemoveRoles {
 		}
 		
 		// Set the title for the window
-		ViewAddRemoveRoles.theStage.setTitle("CSE 360 Foundation Code: Admin Opertaions Page");
+		ViewAddRemoveRoles.theStage.setTitle("CSE 360 Foundation Code: Admin Operations Page"); //fixed typo
 		ViewAddRemoveRoles.theStage.setScene(ViewAddRemoveRoles.theAddRemoveRolesScene);
 		ViewAddRemoveRoles.theStage.show();
 	}
@@ -110,6 +112,8 @@ public class ControllerAddRemoveRoles {
 	 * 
 	 */
 	private static void setupSelectedUser() {
+		ViewAddRemoveRoles.label_ErrorMessage.setText("");
+		ViewAddRemoveRoles.label_ErrorMessage.setVisible(false);
 		System.out.println("*** Entering setupSelectedUser");
 		
 		// Create the list of roles that could be added for the currently selected user (e.g., Do
@@ -183,7 +187,6 @@ public class ControllerAddRemoveRoles {
 
 		// Repaint the window showing this new values
 		repaintTheWindow();
-
 	}
 	
 	
@@ -242,6 +245,15 @@ public class ControllerAddRemoveRoles {
 					clearAndSelect(0);		
 				setupSelectedUser();
 			}				
+			else { //removal failed
+				if(ViewAddRemoveRoles.theRemoveRole.equals("Admin")) {
+					ViewAddRemoveRoles.label_ErrorMessage.setText("Cannot remove the Admin role. The system must have at least one Admin.");
+				}
+				else {
+					ViewAddRemoveRoles.label_ErrorMessage.setText("Role removal failed.");
+				}
+			ViewAddRemoveRoles.label_ErrorMessage.setVisible(true);
+			}
 		}
 	}
 	
