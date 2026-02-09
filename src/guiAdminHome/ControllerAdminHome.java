@@ -137,7 +137,7 @@ public class ControllerAdminHome {
 			return;
 		}
 		String otp = UUID.randomUUID().toString().substring(0, 8);
-		ViewAdminHome.theDatabase.setOneTimePassword(selectedUser, otp);
+		applicationMain.FoundationsMain.database.setOneTimePassword(selectedUser, otp);
 		ViewAdminHome.alertNotImplemented.setTitle("One-Time Password Set");
 		ViewAdminHome.alertNotImplemented.setHeaderText("OTP for " + selectedUser);
 		ViewAdminHome.alertNotImplemented.setContentText("One-Time Password: " + otp);
@@ -167,7 +167,7 @@ public class ControllerAdminHome {
 		confirm.setContentText("This action cannot be undone.");
 		Optional<ButtonType> result = confirm.showAndWait();
 		if (result.isPresent() && result.get() == ButtonType.OK) {
-			boolean deleted = ViewAdminHome.theDatabase.deleteUser(selectedUser);
+			boolean deleted = applicationMain.FoundationsMain.database.deleteUser(selectedUser);
 			if (deleted) {
 				ViewAdminHome.populateUserList();
 				ViewAdminHome.alertNotImplemented.setTitle("Success");
