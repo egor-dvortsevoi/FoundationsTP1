@@ -39,6 +39,8 @@ public class ViewPostDetail {
     protected static Button button_SubmitReply = new Button("Submit Reply");
     protected static Button button_Back = new Button("Back");
 
+    protected static Button button_DeletePost = new Button("Delete Post");
+    
     private static ViewPostDetail theView;
     private static Database theDatabase = applicationMain.FoundationsMain.database;
 
@@ -55,7 +57,12 @@ public class ViewPostDetail {
         theStage = ps;
         theUser = user;
         thePost = post;
-
+        
+        button_DeletePost.setVisible(
+        	    thePost.getAuthorUsername().equals(theUser.getUserName())
+        	);
+        
+        
         if (theView == null) theView = new ViewPostDetail();
 
         // Populate the dynamic content
@@ -148,12 +155,21 @@ public class ViewPostDetail {
         button_Back.setOnAction((_) -> {
             ViewStudentHome.displayStudentHome(theStage, theUser);
         });
+        
+        // delete button
+        setupButtonUI(button_DeletePost, "Dialog", 14, 130, Pos.CENTER, 300, 500);
+        button_DeletePost.setOnAction((_) -> {
+            ControllerStudentHome.deleteCurrentPost();
+        });
+
+        
 
         theRootPane.getChildren().addAll(
             label_PageTitle, label_PostTitle, label_PostMeta, text_PostContent,
             label_Replies, listView_Replies,
             label_ReplyLabel, text_ReplyContent,
-            button_SubmitReply, button_Back
+            button_SubmitReply, button_Back, button_DeletePost
+            
         );
     }
 
