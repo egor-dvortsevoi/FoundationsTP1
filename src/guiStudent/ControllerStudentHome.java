@@ -46,24 +46,52 @@ public class ControllerStudentHome {
 
 	// Reference for the in-memory database so this package has access
 	private static Database theDatabase = applicationMain.FoundationsMain.database;
+	static {
+	    ViewStudentHome.checkbox_UnreadOnly
+	        .setOnAction(e -> refreshPostList());
+	}
 
 	/**********
 	 * Refresh the list of posts displayed on the Student Home page.
 	 */
 	protected static void refreshPostList() {
-		ViewStudentHome.listView_Posts.getItems().clear();
-		List<Post> posts = theDatabase.getAllPosts();
-		ViewStudentHome.currentPosts = posts;
-		for (Post p : posts) {
-			int replyCount = theDatabase.getReplyCountForPost(p.getId());
-			String display = p.getTitle() + "  [" + p.getAuthorUsername() + "]"
-					+ "  (" + replyCount + " replies)";
-			if (p.getTimestamp() != null) {
-				display += "  - " + p.getTimestamp().toString();
-			}
-			ViewStudentHome.listView_Posts.getItems().add(display);
-		}
+	    ViewStudentHome.listView_Posts.getItems().clear();
+
+	    boolean unreadOnly = ViewStudentHome.checkbox_UnreadOnly.isSelected();
+	    String username = ViewStudentHome.theUser.getUserName();
+
+	    List<Post> allPosts = theDatabase.getAllPosts();
+	    ViewStudentHome.currentPosts = new java.util.ArrayList<>();
+
+	    for (Post p : allPosts) {
+
+	        int unreadCount =
+	                theDatabase.getUnreadReplyCount(username, p.getId());
+
+	        if (unreadOnly && unreadCount == 0) {
+	            continue; // skip posts with no unread replies
+	        }
+
+	        ViewStudentHome.currentPosts.add(p);
+
+	        int replyCount = theDatabase.getReplyCountForPost(p.getId());
+
+	        String display = p.getTitle() + "  [" + p.getAuthorUsername() + "]"
+	                + "  (" + replyCount + " replies";
+
+	        if (unreadCount > 0) {
+	            display += ", " + unreadCount + " unread";
+	        }
+	        display += ")";
+
+	        if (p.getTimestamp() != null) {
+	            display += "  - " + p.getTimestamp().toString();
+	        }
+
+	        ViewStudentHome.listView_Posts.getItems().add(display);
+	    }
 	}
+
 
 	/**********
 	 * Submit a new post from the new post form.

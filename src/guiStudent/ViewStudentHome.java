@@ -10,6 +10,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.Pane;
 import javafx.scene.shape.Line;
@@ -65,6 +66,9 @@ public class ViewStudentHome {
 	protected static ListView<String> listView_Posts = new ListView<>();
 	protected static Button button_NewPost = new Button("New Post");
 	protected static Button button_ViewPost = new Button("View Post");
+	protected static CheckBox checkbox_UnreadOnly =
+	        new CheckBox("Show only posts with unread replies");
+
 	
 	// New Post form widgets (initially hidden)
 	protected static Label label_NewPostTitle = new Label("Title:");
@@ -196,6 +200,9 @@ public class ViewStudentHome {
 		
 		// GUI Area 2 — Discussion Posts
 		setupLabelUI(label_Posts, "Arial", 20, 300, Pos.BASELINE_LEFT, 20, 105);
+		checkbox_UnreadOnly.setLayoutX(20);
+		checkbox_UnreadOnly.setLayoutY(365);
+
 		
 		listView_Posts.setLayoutX(20);
 		listView_Posts.setLayoutY(135);
@@ -255,14 +262,22 @@ public class ViewStudentHome {
 		// This is the end of the GUI initialization code
 		
 		// Place all of the widget items into the Root Pane's list of children
-         theRootPane.getChildren().addAll(
-			label_PageTitle, label_UserDetails, button_UpdateThisUser, line_Separator1,
-			label_Posts, listView_Posts, button_NewPost, button_ViewPost,
-			label_NewPostTitle, text_NewPostTitle,
-			label_NewPostThread, text_NewPostThread,
-			label_NewPostContent, text_NewPostContent,
-			button_SubmitPost, button_CancelPost,
-	        line_Separator4, button_Logout, button_Quit);
+        theRootPane.getChildren().addAll(
+        	    label_PageTitle, label_UserDetails, button_UpdateThisUser, line_Separator1,
+
+        	    label_Posts, listView_Posts, checkbox_UnreadOnly,
+        	    button_NewPost, button_ViewPost,
+
+        	    label_NewPostTitle, text_NewPostTitle,
+        	    label_NewPostThread, text_NewPostThread,
+        	    label_NewPostContent, text_NewPostContent,
+        	    button_SubmitPost, button_CancelPost,
+
+        	    line_Separator4, button_Logout, button_Quit
+        	);
+
+         
+        
 }
 	
 	
