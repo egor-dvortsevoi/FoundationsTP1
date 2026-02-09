@@ -166,6 +166,16 @@ public class Database {
     			+ "FOREIGN KEY (replyId) REFERENCES repliesDB(id))";
 		statement.execute(readStatusTable);
 
+		// Create the threads table
+		String threadsTable = "CREATE TABLE IF NOT EXISTS threadsDB ("
+				+ "id INT AUTO_INCREMENT PRIMARY KEY, "
+				+ "threadName VARCHAR(255) UNIQUE, "
+				+ "createdBy VARCHAR(255), "
+				+ "createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP)";
+		statement.execute(threadsTable);
+
+		// Seed the "General" thread if it does not already exist
+		seedGeneralThread();
 	}
 
 
@@ -199,6 +209,130 @@ public class Database {
  * @return the number of user records in the database.
  * 
  */
+	// ========================================================================================
+	// Thread Methods
+	// ========================================================================================
+
+	/*******
+	 * <p> Method: seedGeneralThread </p>
+	 * 
+	 * <p> Description: Ensures the "General" thread exists in the threadsDB table.
+	 * Called during table creation / initialization.</p>
+	 */
+	private void seedGeneralThread() {
+		String check = "SELECT COUNT(*) AS count FROM threadsDB WHERE threadName = 'General'";
+		try {
+			ResultSet rs = statement.executeQuery(check);
+			if (rs.next() && rs.getInt("count") == 0) {
+				String insert = "INSERT INTO threadsDB (threadName, createdBy) VALUES ('General', 'SYSTEM')";
+				statement.execute(insert);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
+
+	/*******
+	 * <p> Method: getAllThreadNames </p>
+	 * 
+	 * <p> Description: Returns a list of all thread names, with "General" always first.</p>
+	 * 
+	 * @return a list of thread name strings
+	 */
+	public List<String> getAllThreadNames() {
+		List<String> threads = new ArrayList<>();
+		String query = "SELECT threadName FROM threadsDB ORDER BY " +
+				"CASE WHEN threadName = 'General' THEN 0 ELSE 1 END, threadName ASC";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			ResultSet rs = pstmt.executeQuery();
+			while (rs.next()) {
+				threads.add(rs.getString("threadName"));
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return threads;
+	}
+
+	/*******
+	 * <p> Method: createThread </p>
+	 * 
+	 * <p> Description: Creates a new thread. Returns true on success, false if thread already
+	 * exists or an error occurs.</p>
+	 * 
+	 * @param threadName the name of the thread to create
+	 * @param createdBy  the username of the creator
+	 * @return true if the thread was created successfully
+	 */
+	public boolean createThread(String threadName, String createdBy) {
+		String query = "INSERT INTO threadsDB (threadName, createdBy) VALUES (?, ?)";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			pstmt.setString(1, threadName);
+			pstmt.setString(2, createdBy);
+			pstmt.executeUpdate();
+			return true;
+		} catch (SQLException e) {
+			// Likely duplicate thread name
+			return false;
+		}
+	}
+
+	/*******
+	 * <p> Method: deleteThread </p>
+	 * 
+	 * <p> Description: Deletes a thread by name. The "General" thread cannot be deleted.</p>
+	 * 
+	 * @param threadName the name of the thread to delete
+	 * @return true if the thread was deleted successfully
+	 */
+	public boolean deleteThread(String threadName) {
+		if ("General".equals(threadName)) return false; // Cannot delete the General thread
+		String query = "DELETE FROM threadsDB WHERE threadName = ?";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			pstmt.setString(1, threadName);
+			int rows = pstmt.executeUpdate();
+			return rows > 0;
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return false;
+		}
+	}
+
+	/*******
+	 * <p> Method: renameThread </p>
+	 * 
+	 * <p> Description: Renames an existing thread. The "General" thread cannot be renamed.
+	 * Also updates all posts that reference the old thread name.</p>
+	 * 
+	 * @param oldName the current name of the thread
+	 * @param newName the new name for the thread
+	 * @return true if the thread was renamed successfully
+	 */
+	public boolean renameThread(String oldName, String newName) {
+		if ("General".equals(oldName)) return false; // Cannot rename the General thread
+		try {
+			// Rename the thread
+			String updateThread = "UPDATE threadsDB SET threadName = ? WHERE threadName = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(updateThread)) {
+				pstmt.setString(1, newName);
+				pstmt.setString(2, oldName);
+				int rows = pstmt.executeUpdate();
+				if (rows == 0) return false;
+			}
+			// Update all posts that referenced the old thread name
+			String updatePosts = "UPDATE postsDB SET threadName = ? WHERE threadName = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(updatePosts)) {
+				pstmt.setString(1, newName);
+				pstmt.setString(2, oldName);
+				pstmt.executeUpdate();
+			}
+			return true;
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return false;
+		}
+	}
+
 	public int getNumberOfUsers() {
 		String query = "SELECT COUNT(*) AS count FROM userDB";
 		try {
@@ -1353,14 +1487,14 @@ public class Database {
 	/*******
 	 * <p> Method: List&lt;Post&gt; getAllPosts() </p>
 	 * 
-	 * <p> Description: Retrieves all non-deleted posts ordered by timestamp descending (newest
-	 * first).</p>
+	 * <p> Description: Retrieves all posts ordered by timestamp descending (newest
+	 * first). Deleted posts are included so they can be displayed as [Deleted].</p>
 	 * 
 	 * @return a list of Post objects
 	 */
 	public List<Post> getAllPosts() {
 	    List<Post> posts = new ArrayList<>();
-	    String query = "SELECT * FROM postsDB WHERE isDeleted = FALSE ORDER BY timestamp DESC";
+	    String query = "SELECT * FROM postsDB ORDER BY timestamp DESC";
 	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
 	        ResultSet rs = pstmt.executeQuery();
 	        while (rs.next()) {
@@ -1467,17 +1601,41 @@ public class Database {
 	    return 0;
 	}
 	public void markReplyRead(String username, int replyId) {
-    String query =
-        "MERGE INTO readStatusDB (username, replyId, isRead) " +
-        "KEY (username, replyId) VALUES (?, ?, TRUE)";
-    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-        pstmt.setString(1, username);
-        pstmt.setInt(2, replyId);
-        pstmt.executeUpdate();
-    } catch (SQLException e) {
-        e.printStackTrace();
-    }
-}
+	    String query =
+	        "MERGE INTO readStatusDB (username, replyId, isRead) " +
+	        "KEY (username, replyId) VALUES (?, ?, TRUE)";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setString(1, username);
+	        pstmt.setInt(2, replyId);
+	        pstmt.executeUpdate();
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	}
+
+	/*******
+	 * <p> Method: boolean isReplyRead(String username, int replyId) </p>
+	 * 
+	 * <p> Description: Checks whether a specific reply has been read by the given user.</p>
+	 * 
+	 * @param username the username to check
+	 * @param replyId  the reply id to check
+	 * @return true if the reply has been marked as read by this user
+	 */
+	public boolean isReplyRead(String username, int replyId) {
+	    String query = "SELECT isRead FROM readStatusDB WHERE username = ? AND replyId = ?";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setString(1, username);
+	        pstmt.setInt(2, replyId);
+	        ResultSet rs = pstmt.executeQuery();
+	        if (rs.next()) {
+	            return rs.getBoolean("isRead");
+	        }
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	    return false;
+	}
 
 public int getUnreadReplyCount(String username, int postId) {
     String query =
@@ -1499,4 +1657,59 @@ public int getUnreadReplyCount(String username, int postId) {
     }
     return 0;
 }
+
+/*******
+	 * <p> Method: List&lt;Post&gt; getMyPosts(String username) </p>
+	 * 
+	 * <p> Description: Retrieves all posts authored by the given user,
+	 * ordered by timestamp descending (newest first). Deleted posts are included
+	 * so they can be displayed as [Deleted].</p>
+	 * 
+	 * @param username the author's username
+	 * @return a list of Post objects authored by this user
+	 */
+	public List<Post> getMyPosts(String username) {
+	    List<Post> posts = new ArrayList<>();
+	    String query = "SELECT * FROM postsDB WHERE authorUsername = ? ORDER BY timestamp DESC";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setString(1, username);
+	        ResultSet rs = pstmt.executeQuery();
+	        while (rs.next()) {
+	            Post p = new Post(
+	                rs.getInt("id"),
+	                rs.getString("authorUsername"),
+	                rs.getString("threadName"),
+	                rs.getString("title"),
+	                rs.getString("content"),
+	                rs.getTimestamp("timestamp"),
+	                rs.getBoolean("isDeleted")
+	            );
+	            posts.add(p);
+	        }
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	    return posts;
+	}
+
+/**********
+ * Soft delete a post. Only the author may delete their own post.
+ */
+public boolean deleteOwnPost(int postId, String username) {
+    String sql =
+        "UPDATE postsDB " +
+        "SET isDeleted = TRUE " +
+        "WHERE id = ? AND authorUsername = ? AND isDeleted = FALSE";
+
+    try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+        pstmt.setInt(1, postId);
+        pstmt.setString(2, username);
+        return pstmt.executeUpdate() == 1;
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return false;
+}
+
+
 }

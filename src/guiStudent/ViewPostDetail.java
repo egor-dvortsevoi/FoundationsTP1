@@ -5,6 +5,7 @@ import java.util.List;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextArea;
@@ -38,7 +39,11 @@ public class ViewPostDetail {
     protected static TextArea text_ReplyContent = new TextArea();
     protected static Button button_SubmitReply = new Button("Submit Reply");
     protected static Button button_Back = new Button("Back");
+    protected static CheckBox checkbox_UnreadRepliesOnly =
+            new CheckBox("Show Unread Only");
 
+    protected static Button button_DeletePost = new Button("Delete Post");
+    
     private static ViewPostDetail theView;
     private static Database theDatabase = applicationMain.FoundationsMain.database;
 
@@ -55,23 +60,39 @@ public class ViewPostDetail {
         theStage = ps;
         theUser = user;
         thePost = post;
-
+        
+        boolean deleted = post.isDeleted();
+        
+        // Hide delete button if already deleted or not the author
+        button_DeletePost.setVisible(
+        	    !deleted && thePost.getAuthorUsername().equals(theUser.getUserName())
+        	);
+        
+        // Hide reply form for deleted posts
+        label_ReplyLabel.setVisible(!deleted);
+        text_ReplyContent.setVisible(!deleted);
+        button_SubmitReply.setVisible(!deleted);
+        
         if (theView == null) theView = new ViewPostDetail();
 
-        // Populate the dynamic content
-        label_PostTitle.setText(post.getTitle());
-        String meta = "By: " + post.getAuthorUsername();
+        // Populate the dynamic content — show [Deleted] for deleted posts
+        label_PostTitle.setText(deleted ? "[Deleted]" : post.getTitle());
+        String meta = "By: " + (deleted ? "[Deleted]" : post.getAuthorUsername());
         if (post.getThreadName() != null && !post.getThreadName().isEmpty()) {
             meta += "  |  Thread: " + post.getThreadName();
         }
         if (post.getTimestamp() != null) {
-            meta += "  |  " + post.getTimestamp().toString();
+            meta += "  |  " + post.getTimestamp().toLocalDateTime()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("MM-dd-yyyy HH:mm:ss"));
         }
         label_PostMeta.setText(meta);
-        text_PostContent.setText(post.getContent());
+        text_PostContent.setText(deleted ? "[This post has been deleted]" : post.getContent());
         text_ReplyContent.setText("");
 
-        // Refresh replies
+        // Reset filter to show all replies
+        checkbox_UnreadRepliesOnly.setSelected(false);
+
+        // Refresh replies — replies are still shown for deleted posts
         refreshReplies();
 
         theStage.setTitle("CSE 360 Foundations: Post Detail");
@@ -84,12 +105,21 @@ public class ViewPostDetail {
      */
     protected static void refreshReplies() {
         listView_Replies.getItems().clear();
+        boolean unreadOnly = checkbox_UnreadRepliesOnly.isSelected();
         List<Reply> replies = theDatabase.getRepliesForPost(thePost.getId());
+        int displayCount = 0;
         for (Reply r : replies) {
-            String display = r.getAuthorUsername() + " (" + r.getTimestamp() + "):\n" + r.getContent();
+            boolean alreadyRead = theDatabase.isReplyRead(theUser.getUserName(), r.getId());
+            if (unreadOnly && alreadyRead) {
+                continue;
+            }
+            displayCount++;
+            String ts = r.getTimestamp().toLocalDateTime()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("MM-dd-yyyy HH:mm:ss"));
+            String display = r.getAuthorUsername() + " (" + ts + "):\n" + r.getContent();
             listView_Replies.getItems().add(display);
         }
-        label_Replies.setText("Replies (" + replies.size() + ")");
+        label_Replies.setText("Replies (" + displayCount + " shown, " + replies.size() + " total)");
     }
 
     /**
@@ -124,6 +154,11 @@ public class ViewPostDetail {
         // Replies label
         setupLabelUI(label_Replies, "Arial", 16, 200, Pos.BASELINE_LEFT, 20, 215);
 
+        // Unread-only filter checkbox
+        checkbox_UnreadRepliesOnly.setLayoutX(230);
+        checkbox_UnreadRepliesOnly.setLayoutY(218);
+        checkbox_UnreadRepliesOnly.setOnAction((_) -> { refreshReplies(); });
+
         // Replies list
         listView_Replies.setLayoutX(20);
         listView_Replies.setLayoutY(240);
@@ -146,15 +181,38 @@ public class ViewPostDetail {
         // Back button
         setupButtonUI(button_Back, "Dialog", 14, 130, Pos.CENTER, 160, 500);
         button_Back.setOnAction((_) -> {
+            markAllRepliesRead();
             ViewStudentHome.displayStudentHome(theStage, theUser);
         });
+        
+        // delete button
+        setupButtonUI(button_DeletePost, "Dialog", 14, 130, Pos.CENTER, 300, 500);
+        button_DeletePost.setOnAction((_) -> {
+            markAllRepliesRead();
+            ControllerStudentHome.deleteCurrentPost();
+        });
+
+        
 
         theRootPane.getChildren().addAll(
             label_PageTitle, label_PostTitle, label_PostMeta, text_PostContent,
-            label_Replies, listView_Replies,
+            label_Replies, listView_Replies, checkbox_UnreadRepliesOnly,
             label_ReplyLabel, text_ReplyContent,
-            button_SubmitReply, button_Back
+            button_SubmitReply, button_Back, button_DeletePost
+            
         );
+    }
+
+    /**
+     * Mark all replies for the current post as read for this user.
+     * Called when leaving the post detail view.
+     */
+    protected static void markAllRepliesRead() {
+        if (thePost == null || theUser == null) return;
+        List<Reply> replies = theDatabase.getRepliesForPost(thePost.getId());
+        for (Reply r : replies) {
+            theDatabase.markReplyRead(theUser.getUserName(), r.getId());
+        }
     }
 
     // ----- Helper methods -----

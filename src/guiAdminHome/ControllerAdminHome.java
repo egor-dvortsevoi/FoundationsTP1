@@ -217,6 +217,17 @@ public class ControllerAdminHome {
 	protected static void performLogout() {
 		guiUserLogin.ViewUserLogin.displayUserLogin(ViewAdminHome.theStage);
 	}
+
+	/**********
+	 * <p> Method: performSwitchRole() </p>
+	 * 
+	 * <p> Description: This method navigates the user back to the Multiple Role Dispatch page
+	 * so they can select a different role to play.</p>
+	 */
+	protected static void performSwitchRole() {
+		guiMultipleRoleDispatch.ViewMultipleRoleDispatch.displayMultipleRoleDispatch(
+				ViewAdminHome.theStage, ViewAdminHome.theUser);
+	}
 	
 	/**********
 	 * <p> 

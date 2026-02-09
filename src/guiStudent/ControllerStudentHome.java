@@ -1,11 +1,13 @@
 package guiStudent;
 
 import java.util.List;
+import java.util.Optional;
 
 import database.Database;
 import entityClasses.Post;
 import entityClasses.Reply;
-
+import javafx.scene.control.TextInputDialog;
+import java.time.format.DateTimeFormatter;
 
 /*******
  * <p> Title: ControllerStudentHome Class. </p>
@@ -47,21 +49,36 @@ public class ControllerStudentHome {
 	// Reference for the in-memory database so this package has access
 	private static Database theDatabase = applicationMain.FoundationsMain.database;
 
+	private static final DateTimeFormatter TIMESTAMP_FMT =
+			DateTimeFormatter.ofPattern("MM-dd-yyyy HH:mm:ss");
+
 	/**********
 	 * Refresh the list of posts displayed on the Student Home page.
 	 */
 	protected static void refreshPostList() {
-		ViewStudentHome.listView_Posts.getItems().clear();
-		List<Post> posts = theDatabase.getAllPosts();
-		ViewStudentHome.currentPosts = posts;
-		for (Post p : posts) {
-			int replyCount = theDatabase.getReplyCountForPost(p.getId());
-			String display = p.getTitle() + "  [" + p.getAuthorUsername() + "]"
-					+ "  (" + replyCount + " replies)";
-			if (p.getTimestamp() != null) {
-				display += "  - " + p.getTimestamp().toString();
+		ViewStudentHome.tableView_Posts.getItems().clear();
+		boolean unreadOnly = ViewStudentHome.checkbox_UnreadOnly.isSelected();
+		boolean myPostsOnly = ViewStudentHome.checkbox_MyPostsOnly.isSelected();
+		String username = ViewStudentHome.theUser.getUserName();
+		List<Post> allPosts = myPostsOnly
+				? theDatabase.getMyPosts(username)
+				: theDatabase.getAllPosts();
+		ViewStudentHome.currentPosts = new java.util.ArrayList<>();
+		for (Post p : allPosts) {
+			int unreadCount = theDatabase.getUnreadReplyCount(username, p.getId());
+			if (unreadOnly && unreadCount == 0) {
+				continue;
 			}
-			ViewStudentHome.listView_Posts.getItems().add(display);
+			int idx = ViewStudentHome.currentPosts.size();
+			ViewStudentHome.currentPosts.add(p);
+			int replyCount = theDatabase.getReplyCountForPost(p.getId());
+			String title = p.isDeleted() ? "[Deleted]" : p.getTitle();
+			String thread = (p.getThreadName() != null && !p.getThreadName().isEmpty())
+					? p.getThreadName() : "General";
+			String date = (p.getTimestamp() != null)
+					? p.getTimestamp().toLocalDateTime().format(TIMESTAMP_FMT) : "";
+			ViewStudentHome.tableView_Posts.getItems().add(
+					new ViewStudentHome.PostRow(title, thread, replyCount, unreadCount, date, idx));
 		}
 	}
 
@@ -70,7 +87,10 @@ public class ControllerStudentHome {
 	 */
 	protected static void submitNewPost() {
 		String title = ViewStudentHome.text_NewPostTitle.getText().trim();
-		String thread = ViewStudentHome.text_NewPostThread.getText().trim();
+		String thread = ViewStudentHome.combo_NewPostThread.getValue();
+		if (thread == null || thread.trim().isEmpty()) {
+			thread = "General";
+		}
 		String content = ViewStudentHome.text_NewPostContent.getText().trim();
 		
 		if (title.isEmpty()) {
@@ -93,17 +113,47 @@ public class ControllerStudentHome {
 	}
 
 	/**********
+	 * Prompt the student for a new thread name, create it, and select it in the ComboBox.
+	 */
+	protected static void createNewThread() {
+		TextInputDialog dialog = new TextInputDialog();
+		dialog.setTitle("New Thread");
+		dialog.setHeaderText("Create a New Thread");
+		dialog.setContentText("Thread name:");
+		Optional<String> result = dialog.showAndWait();
+		result.ifPresent(name -> {
+			String trimmed = name.trim();
+			if (trimmed.isEmpty()) {
+				ViewStudentHome.alertPostError.setContentText("Thread name cannot be empty.");
+				ViewStudentHome.alertPostError.showAndWait();
+				return;
+			}
+			boolean created = theDatabase.createThread(trimmed, ViewStudentHome.theUser.getUserName());
+			if (!created) {
+				ViewStudentHome.alertPostError.setContentText(
+						"Thread already exists or could not be created.");
+				ViewStudentHome.alertPostError.showAndWait();
+				return;
+			}
+			// Refresh the ComboBox and select the new thread
+			ViewStudentHome.combo_NewPostThread.getItems().clear();
+			ViewStudentHome.combo_NewPostThread.getItems().addAll(theDatabase.getAllThreadNames());
+			ViewStudentHome.combo_NewPostThread.setValue(trimmed);
+		});
+	}
+
+	/**********
 	 * View the currently selected post in the post list.
 	 */
 	protected static void viewSelectedPost() {
-		int selectedIndex = ViewStudentHome.listView_Posts.getSelectionModel().getSelectedIndex();
-		if (selectedIndex < 0 || ViewStudentHome.currentPosts == null 
-				|| selectedIndex >= ViewStudentHome.currentPosts.size()) {
+		ViewStudentHome.PostRow selectedRow = ViewStudentHome.tableView_Posts.getSelectionModel().getSelectedItem();
+		if (selectedRow == null || ViewStudentHome.currentPosts == null
+				|| selectedRow.getPostIndex() >= ViewStudentHome.currentPosts.size()) {
 			ViewStudentHome.alertPostError.setContentText("Please select a post to view.");
 			ViewStudentHome.alertPostError.showAndWait();
 			return;
 		}
-		Post selectedPost = ViewStudentHome.currentPosts.get(selectedIndex);
+		Post selectedPost = ViewStudentHome.currentPosts.get(selectedRow.getPostIndex());
 		// Re-fetch from DB to get latest data
 		Post freshPost = theDatabase.getPostById(selectedPost.getId());
 		if (freshPost == null) {
@@ -149,6 +199,14 @@ public class ControllerStudentHome {
 	protected static void performLogout() {
 		guiUserLogin.ViewUserLogin.displayUserLogin(ViewStudentHome.theStage);
 	}
+
+	/**********
+	 * Navigate back to the Multiple Role Dispatch page to switch roles.
+	 */
+	protected static void performSwitchRole() {
+		guiMultipleRoleDispatch.ViewMultipleRoleDispatch.displayMultipleRoleDispatch(
+				ViewStudentHome.theStage, ViewStudentHome.theUser);
+	}
 	
 	/**********
 	 * Quit the application.
@@ -156,4 +214,29 @@ public class ControllerStudentHome {
 	protected static void performQuit() {
 		System.exit(0);
 	}
+	
+	/**********
+	 * Delete the currently viewed post (author only).
+	 */
+	protected static void deleteCurrentPost() {
+
+		Post post = ViewPostDetail.thePost;
+
+		if (post == null) {
+			return;
+		}
+
+		theDatabase.deleteOwnPost(
+			post.getId(),
+			ViewPostDetail.theUser.getUserName()
+		);
+
+		// Return to student home after deletion
+		ViewStudentHome.displayStudentHome(
+			ViewStudentHome.theStage,
+			ViewStudentHome.theUser
+		);
+	}
+
+	
 }
