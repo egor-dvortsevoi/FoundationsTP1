@@ -1,8 +1,12 @@
 package guiAdminHome;
 
 import java.time.LocalDate;
+import java.util.Optional;
+import java.util.UUID;
 
 import database.Database;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
 
 /*******
  * <p> Title: GUIAdminHomePage Class. </p>
@@ -124,10 +128,19 @@ public class ControllerAdminHome {
 	 * this function has not yet been implemented. </p>
 	 */
 	protected static void setOnetimePassword () {
-		System.out.println("\n*** WARNING ***: One-Time Password Not Yet Implemented");
-		ViewAdminHome.alertNotImplemented.setTitle("*** WARNING ***");
-		ViewAdminHome.alertNotImplemented.setHeaderText("One-Time Password Issue");
-		ViewAdminHome.alertNotImplemented.setContentText("One-Time Password Not Yet Implemented");
+		String selectedUser = ViewAdminHome.combobox_SelectUser.getValue();
+		if (selectedUser == null || selectedUser.equals("<Select a User>")) {
+			ViewAdminHome.alertNotImplemented.setTitle("*** WARNING ***");
+			ViewAdminHome.alertNotImplemented.setHeaderText("One-Time Password Issue");
+			ViewAdminHome.alertNotImplemented.setContentText("Please select a user first.");
+			ViewAdminHome.alertNotImplemented.showAndWait();
+			return;
+		}
+		String otp = UUID.randomUUID().toString().substring(0, 8);
+		ViewAdminHome.theDatabase.setOneTimePassword(selectedUser, otp);
+		ViewAdminHome.alertNotImplemented.setTitle("One-Time Password Set");
+		ViewAdminHome.alertNotImplemented.setHeaderText("OTP for " + selectedUser);
+		ViewAdminHome.alertNotImplemented.setContentText("One-Time Password: " + otp);
 		ViewAdminHome.alertNotImplemented.showAndWait();
 	}
 	
@@ -140,11 +153,33 @@ public class ControllerAdminHome {
 	 * this function has not yet been implemented. </p>
 	 */
 	protected static void deleteUser() {
-		System.out.println("\n*** WARNING ***: Delete User Not Yet Implemented");
-		ViewAdminHome.alertNotImplemented.setTitle("*** WARNING ***");
-		ViewAdminHome.alertNotImplemented.setHeaderText("Delete User Issue");
-		ViewAdminHome.alertNotImplemented.setContentText("Delete User Not Yet Implemented");
-		ViewAdminHome.alertNotImplemented.showAndWait();
+		String selectedUser = ViewAdminHome.combobox_SelectUser.getValue();
+		if (selectedUser == null || selectedUser.equals("<Select a User>")) {
+			ViewAdminHome.alertNotImplemented.setTitle("*** WARNING ***");
+			ViewAdminHome.alertNotImplemented.setHeaderText("Delete User Issue");
+			ViewAdminHome.alertNotImplemented.setContentText("Please select a user first.");
+			ViewAdminHome.alertNotImplemented.showAndWait();
+			return;
+		}
+		Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+		confirm.setTitle("Confirm Delete");
+		confirm.setHeaderText("Delete user: " + selectedUser + "?");
+		confirm.setContentText("This action cannot be undone.");
+		Optional<ButtonType> result = confirm.showAndWait();
+		if (result.isPresent() && result.get() == ButtonType.OK) {
+			boolean deleted = ViewAdminHome.theDatabase.deleteUser(selectedUser);
+			if (deleted) {
+				ViewAdminHome.populateUserList();
+				ViewAdminHome.alertNotImplemented.setTitle("Success");
+				ViewAdminHome.alertNotImplemented.setHeaderText("User Deleted");
+				ViewAdminHome.alertNotImplemented.setContentText("User " + selectedUser + " has been deleted.");
+			} else {
+				ViewAdminHome.alertNotImplemented.setTitle("Error");
+				ViewAdminHome.alertNotImplemented.setHeaderText("Delete Failed");
+				ViewAdminHome.alertNotImplemented.setContentText("Could not delete user " + selectedUser + ".");
+			}
+			ViewAdminHome.alertNotImplemented.showAndWait();
+		}
 	}
 	
 	/**********

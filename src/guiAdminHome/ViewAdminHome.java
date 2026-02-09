@@ -102,6 +102,7 @@ public class ViewAdminHome {
 	// GUI Area 4: This is the second of the two action item areas.  This provides a set of other
 	// admin buttons to use to perform other roles.  Many of these buttons are just stubs and an
 	// alert pops up to inform the admin of this fact.
+	protected static ComboBox <String> combobox_SelectUser = new ComboBox <String>();
 	protected static Button button_ManageInvitations = new Button("Manage Invitations");
 	protected static Button button_SetOnetimePassword = new Button("Set a One-Time Password");
 	protected static Button button_DeleteUser = new Button("Delete a User");
@@ -269,6 +270,9 @@ public class ViewAdminHome {
 		button_SendInvitation.setOnAction((_) -> {ControllerAdminHome.performInvitation(); });
 	
 		// GUI Area 4 — shift buttons down to accommodate deadline row
+		setupComboBoxUI(combobox_SelectUser, "Dialog", 16, 250, 300, 290);
+		populateUserList();
+
 		setupButtonUI(button_ManageInvitations, "Dialog", 16, 250, Pos.CENTER, 20, 290);
 		button_ManageInvitations.setOnAction((_) -> 
 			{ControllerAdminHome.manageInvitations(); });
@@ -308,6 +312,7 @@ public class ViewAdminHome {
     		combobox_SelectRole, 
     		label_InvitationDeadline, datePicker_Deadline,
     		button_SendInvitation, line_Separator3,
+    		combobox_SelectUser,
     		button_ManageInvitations,
     		button_SetOnetimePassword,
     		button_DeleteUser,
@@ -407,5 +412,18 @@ public class ViewAdminHome {
 		c.setMinWidth(w);
 		c.setLayoutX(x);
 		c.setLayoutY(y);
+	}
+
+	/**
+	 * <p> Method: void populateUserList() </p>
+	 *
+	 * <p> Description: Populates the user selection ComboBox with usernames from the database.</p>
+	 */
+	protected static void populateUserList() {
+		java.util.List<String> users = theDatabase.getUserList();
+		if (users != null) {
+			combobox_SelectUser.setItems(FXCollections.observableArrayList(users));
+			combobox_SelectUser.getSelectionModel().select(0);
+		}
 	}
 }

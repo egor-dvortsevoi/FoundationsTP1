@@ -106,6 +106,31 @@ public class ControllerUserLogin {
 		// Check to see that the login password matches the account password
     	String actualPassword = theDatabase.getCurrentPassword();
     	
+    	// Task 2.2: Check for One-Time Password login
+    	String storedOTP = theDatabase.getOneTimePassword(username);
+    	if (storedOTP != null && storedOTP.equals(password)) {
+    		// Clear OTP immediately
+    		theDatabase.clearOneTimePassword(username);
+    		
+    		// Build a User object (same pattern as normal login)
+    		User tempUser = new User(
+    			username,
+    			password,
+    			theDatabase.getCurrentFirstName(),
+    			theDatabase.getCurrentMiddleName(),
+    			theDatabase.getCurrentLastName(),
+    			theDatabase.getCurrentPreferredFirstName(),
+    			theDatabase.getCurrentEmailAddress(),
+    			theDatabase.getCurrentAdminRole(),
+    			theDatabase.getCurrentNewStudent(),
+    			theDatabase.getCurrentNewStaff()
+    		);
+    		
+    		// Send user to password reset screen
+    		guiUserUpdate.ViewUserUpdate.displayUserUpdate(theStage, tempUser);
+    		return;
+    	}
+    	
     	if (password.compareTo(actualPassword) != 0) {
     		ViewUserLogin.alertUsernamePasswordError.setContentText(
     				"Incorrect username/password. Try again!");

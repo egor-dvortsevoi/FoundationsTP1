@@ -119,7 +119,8 @@ public class Database {
 				+ "emailAddress VARCHAR(255), "
 				+ "adminRole BOOL DEFAULT FALSE, "
 				+ "newStudent BOOL DEFAULT FALSE, "
-				+ "newStaff BOOL DEFAULT FALSE)";
+				+ "newStaff BOOL DEFAULT FALSE, "
+				+ "oneTimePassword VARCHAR(255))";
 		statement.execute(userTable);
 		
 		// Create the invitation codes table
@@ -503,6 +504,26 @@ public class Database {
 	    }
 //		System.out.println(userList);
 		return userList;
+	}
+
+	/**
+	 * <p> Method: boolean deleteUser(String username) </p>
+	 *
+	 * <p> Description: Delete a user from the database given their username.</p>
+	 *
+	 * @param username is the username of the user to delete.
+	 *
+	 * @return true if the user was deleted, false otherwise.
+	 */
+	public boolean deleteUser(String username) {
+	    String query = "DELETE FROM userDB WHERE userName = ?";
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setString(1, username);
+	        int rows = pstmt.executeUpdate();
+	        return rows > 0;
+	    } catch (SQLException e) {
+	        return false;
+	    }
 	}
 
 /*******
@@ -957,6 +978,79 @@ public class Database {
 	        pstmt.setString(2, username);
 	        pstmt.executeUpdate();
 	        currentPassword = password;
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	}
+
+	/**
+	 * <p> Method: void setOneTimePassword(String username, String otp) </p>
+	 *
+	 * <p> Description: Set a one-time password for the specified user.</p>
+	 *
+	 * @param username is the username of the user
+	 * @param otp is the one-time password to set
+	 */
+	public void setOneTimePassword(String username, String otp) {
+	    try {
+	        PreparedStatement stmt = connection.prepareStatement(
+	            "UPDATE userDB SET oneTimePassword = ? WHERE userName = ?"
+	        );
+	        stmt.setString(1, otp);
+	        stmt.setString(2, username);
+	        stmt.executeUpdate();
+	        stmt.close();
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	}
+
+	/**
+	 * <p> Method: String getOneTimePassword(String username) </p>
+	 *
+	 * <p> Description: Retrieve the one-time password for the specified user.</p>
+	 *
+	 * @param username is the username of the user
+	 * @return the one-time password, or null if not set
+	 */
+	public String getOneTimePassword(String username) {
+	    try {
+	        PreparedStatement stmt = connection.prepareStatement(
+	            "SELECT oneTimePassword FROM userDB WHERE userName = ?"
+	        );
+	        stmt.setString(1, username);
+	        ResultSet rs = stmt.executeQuery();
+
+	        String otp = null;
+	        if (rs.next()) {
+	            otp = rs.getString("oneTimePassword");
+	        }
+
+	        rs.close();
+	        stmt.close();
+	        return otp;
+
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	        return null;
+	    }
+	}
+
+	/**
+	 * <p> Method: void clearOneTimePassword(String username) </p>
+	 *
+	 * <p> Description: Clear the one-time password for the specified user.</p>
+	 *
+	 * @param username is the username of the user
+	 */
+	public void clearOneTimePassword(String username) {
+	    try {
+	        PreparedStatement stmt = connection.prepareStatement(
+	            "UPDATE userDB SET oneTimePassword = NULL WHERE userName = ?"
+	        );
+	        stmt.setString(1, username);
+	        stmt.executeUpdate();
+	        stmt.close();
 	    } catch (SQLException e) {
 	        e.printStackTrace();
 	    }

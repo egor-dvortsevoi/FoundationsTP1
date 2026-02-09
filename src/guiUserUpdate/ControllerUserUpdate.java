@@ -37,6 +37,12 @@ public class ControllerUserUpdate {
 	 */
 	protected static void goToUserHomePage(Stage theStage, User theUser) {
 		
+		// Task 2.2: If this user arrived here through OTP reset, force re-login
+		if (theUser.getPassword() == null || theUser.getPassword().length() == 0) {
+			guiUserLogin.ViewUserLogin.displayUserLogin(theStage);
+			return;
+		}
+		
 		// Get the roles the user selected during login
 		int theRole = applicationMain.FoundationsMain.activeHomePage;
 
