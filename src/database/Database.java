@@ -1,10 +1,6 @@
 package database;
 
 import java.sql.*;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -156,6 +152,15 @@ public class Database {
 	            + "timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
 	            + "FOREIGN KEY (postId) REFERENCES postsDB(id))";
 	    statement.execute(repliesTable);
+
+		String readStatusTable = "CREATE TABLE IF NOT EXISTS readStatusDB ("
+    			+ "username VARCHAR(255), "
+    			+ "replyId INT, "
+    			+ "isRead BOOL DEFAULT FALSE, "
+    			+ "PRIMARY KEY (username, replyId), "
+    			+ "FOREIGN KEY (replyId) REFERENCES repliesDB(id))";
+		statement.execute(readStatusTable);
+
 	}
 
 
@@ -1398,4 +1403,37 @@ public class Database {
 	    }
 	    return 0;
 	}
+	public void markReplyRead(String username, int replyId) {
+    String query =
+        "MERGE INTO readStatusDB (username, replyId, isRead) " +
+        "KEY (username, replyId) VALUES (?, ?, TRUE)";
+    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+        pstmt.setString(1, username);
+        pstmt.setInt(2, replyId);
+        pstmt.executeUpdate();
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+}
+
+public int getUnreadReplyCount(String username, int postId) {
+    String query =
+        "SELECT COUNT(*) AS count " +
+        "FROM repliesDB r " +
+        "LEFT JOIN readStatusDB rs " +
+        "ON r.id = rs.replyId AND rs.username = ? " +
+        "WHERE r.postId = ? AND (rs.isRead IS NULL OR rs.isRead = FALSE)";
+
+    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+        pstmt.setString(1, username);
+        pstmt.setInt(2, postId);
+        ResultSet rs = pstmt.executeQuery();
+        if (rs.next()) {
+            return rs.getInt("count");
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return 0;
+}
 }
