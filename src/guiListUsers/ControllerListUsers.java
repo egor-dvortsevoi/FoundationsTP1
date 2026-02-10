@@ -8,7 +8,7 @@ import database.Database;
  * * <p> Description: Controller for the List Users Page. </p>
  * * <p> Copyright: Lynn Robert Carter © 2025 </p>
  * * @author Lynn Robert Carter
- * * @version 1.00		2025-08-20 Initial version
+ * * @version 2.00		2026-02-09 Updated to support TableView
  */
 public class ControllerListUsers {
 	
@@ -21,45 +21,30 @@ public class ControllerListUsers {
 	/**********
 	 * <p> Method: populateUserList() </p>
 	 * * <p> Description: Fetches all users from the database and updates the 
-	 * pre-created row widgets by setting their text and visibility. </p>
+	 * TableView items. </p>
 	 */
 	protected static void populateUserList() {
-		// Fetch data
+		// Clear existing items
+		ViewListUsers.tableView_Users.getItems().clear();
+		
+		// Fetch data from database
 		ArrayList<ArrayList<String>> allUsers = theDatabase.getAllUsers();
 		
-		// Update visibility and text for each pre-created row
-		int rowIndex = 0;
+		// Convert database rows to UserRow objects and add to TableView
 		for (ArrayList<String> userRow : allUsers) {
-			if (rowIndex >= 100) break; // Safety check: max 100 users
-			
 			String username = userRow.get(0);
 			String name = userRow.get(1);
 			String email = userRow.get(2);
 			String roles = userRow.get(3);
 			
-			// Update text in existing Labels
-			ViewListUsers.row_Labels[rowIndex][0].setText(username);
-			ViewListUsers.row_Labels[rowIndex][1].setText(name);
-			ViewListUsers.row_Labels[rowIndex][2].setText(email);
-			ViewListUsers.row_Labels[rowIndex][3].setText(roles);
-			
-			// Make the row visible
-			ViewListUsers.row_UserRows[rowIndex].setVisible(true);
-			
-			rowIndex++;
-		}
-		
-		// Hide any remaining unused rows
-		for (int i = rowIndex; i < 100; i++) {
-			ViewListUsers.row_UserRows[i].setVisible(false);
+			ViewListUsers.UserRow row = new ViewListUsers.UserRow(username, name, email, roles);
+			ViewListUsers.tableView_Users.getItems().add(row);
 		}
 	}
 
 	/**********
 	 * <p> Method: repaintTheWindow() </p>
-	 * * <p> Description: Sets the scene properties and displays the stage.
-	 * Unlike AddRemoveRoles, this does not manage widget visibility because
-	 * the list view structure is static. </p>
+	 * * <p> Description: Sets the scene properties and displays the stage. </p>
 	 */
 	protected static void repaintTheWindow() {
 		// Set the title for the window

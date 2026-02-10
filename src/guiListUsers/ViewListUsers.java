@@ -1,20 +1,14 @@
 package guiListUsers;
 
-import javafx.geometry.Insets;
+import java.util.List;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.layout.Border;
-import javafx.scene.layout.BorderStroke;
-import javafx.scene.layout.BorderStrokeStyle;
-import javafx.scene.layout.BorderWidths;
-import javafx.scene.layout.CornerRadii;
-import javafx.scene.layout.HBox;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
 import javafx.scene.layout.Pane;
-import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
 import javafx.scene.shape.Line;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
@@ -23,10 +17,10 @@ import entityClasses.User;
 /*******
  * <p> Title: ViewListUsers Class. </p>
  * * <p> Description: The Java/FX-based page for listing all users.
- * Reimplemented to match the static-widget pattern of AddRemoveRoles.</p>
+ * Refactored to use TableView for automatic sorting and dynamic list handling.</p>
  * * <p> Copyright: Lynn Robert Carter © 2025 </p>
  * * @author Lynn Robert Carter
- * * @version 1.00		2025-08-20 Initial version
+ * * @version 2.00		2026-02-09 Refactored to use TableView
  */
 public class ViewListUsers {
 
@@ -42,22 +36,12 @@ public class ViewListUsers {
 	protected static Label label_UserDetails = new Label();
 	protected static Line line_Separator1 = new Line(20, 95, width-20, 95);
 
-	// --- GUI Area 2: List Headers & Content ---
-	protected static Label label_Col_Username = new Label("Username");
-	protected static Label label_Col_Name = new Label("Full Name");
-	protected static Label label_Col_Email = new Label("Email");
-	protected static Label label_Col_Role = new Label("Roles");
-	protected static Line line_Separator2 = new Line(20, 160, width-20, 160);
-
-	// The ScrollPane and VBox are static widgets. 
-	// The VBox content changes, but the widgets themselves remain in the RootPane.
-	protected static ScrollPane scrollPane_Users = new ScrollPane();
-	protected static VBox vbox_Content = new VBox(5);
-	
-	// Pool of reusable HBox and Label widgets for user rows (max 100 users displayed)
-	// These are pre-created in the constructor and reused by updating their text
-	protected static HBox[] row_UserRows = new HBox[100];
-	protected static Label[][] row_Labels = new Label[100][4]; // 4 labels per row (username, name, email, roles)
+	// --- GUI Area 2: The TableView ---
+	protected static TableView<UserRow> tableView_Users = new TableView<>();
+	protected static TableColumn<UserRow, String> col_Username = new TableColumn<>("Username");
+	protected static TableColumn<UserRow, String> col_Name = new TableColumn<>("Full Name");
+	protected static TableColumn<UserRow, String> col_Email = new TableColumn<>("Email");
+	protected static TableColumn<UserRow, String> col_Roles = new TableColumn<>("Roles");
 
 	// --- GUI Area 3: Footer ---
 	protected static Line line_Separator4 = new Line(20, 525, width-20, 525);
@@ -101,48 +85,31 @@ public class ViewListUsers {
 		label_UserDetails.setText("User: " + theUser.getUserName());
 		setupLabelUI(label_UserDetails, "Arial", 20, width, Pos.BASELINE_LEFT, 20, 55);
 
-		// --- Setup GUI Area 2 (Headers) ---
-		setupLabelUI(label_Col_Username, "Arial", 14, 120, Pos.BASELINE_LEFT, 30, 130);
-		setupLabelUI(label_Col_Name, "Arial", 14, 180, Pos.BASELINE_LEFT, 150, 130);
-		setupLabelUI(label_Col_Email, "Arial", 14, 220, Pos.BASELINE_LEFT, 330, 130);
-		setupLabelUI(label_Col_Role, "Arial", 14, 150, Pos.BASELINE_LEFT, 550, 130);
+		// --- Setup GUI Area 2 (TableView) ---
 		
-		// --- Pre-create reusable HBox and Label widgets for user rows ---
-		// Create ALL 100 rows and add them to vbox_Content immediately.
-		// This prevents CSS reapplication when toggling visibility later.
-		for (int i = 0; i < 100; i++) {
-			row_UserRows[i] = new HBox(10); 
-			row_UserRows[i].setPadding(new Insets(5, 0, 5, 0)); 
-			row_UserRows[i].setAlignment(Pos.CENTER_LEFT);
-			row_UserRows[i].setBorder(new Border(new BorderStroke(Color.LIGHTGRAY, 
-					BorderStrokeStyle.SOLID, CornerRadii.EMPTY, new BorderWidths(0, 0, 1, 0))));
-			
-			// Create 4 labels per row (username, name, email, roles)
-			for (int j = 0; j < 4; j++) {
-				row_Labels[i][j] = new Label("");
-				row_Labels[i][j].setFont(Font.font("Arial", 14));
-				
-				// Set appropriate widths based on column
-				if (j == 0) row_Labels[i][j].setMinWidth(120);      // username
-				else if (j == 1) row_Labels[i][j].setMinWidth(180); // name
-				else if (j == 2) row_Labels[i][j].setMinWidth(220); // email
-				else row_Labels[i][j].setMinWidth(150);             // roles
-				
-				row_UserRows[i].getChildren().add(row_Labels[i][j]);
-			}
-			
-			// Add ALL rows to the VBox ONCE. Controller will set visibility, not add/remove.
-			vbox_Content.getChildren().add(row_UserRows[i]);
-			row_UserRows[i].setVisible(false); // Start hidden, show only as needed
-		}
+		// Configure Columns
+		col_Username.setCellValueFactory(data -> data.getValue().usernameProperty());
+		col_Username.setPrefWidth(150);
 		
-		// --- Setup GUI Area 2 (List Container) ---
-		scrollPane_Users.setLayoutX(20);
-		scrollPane_Users.setLayoutY(165);
-		scrollPane_Users.setPrefWidth(width - 40);
-		scrollPane_Users.setPrefHeight(350); 
-		scrollPane_Users.setContent(vbox_Content);
-		scrollPane_Users.setFitToWidth(true);
+		col_Name.setCellValueFactory(data -> data.getValue().nameProperty());
+		col_Name.setPrefWidth(200);
+		
+		col_Email.setCellValueFactory(data -> data.getValue().emailProperty());
+		col_Email.setPrefWidth(250);
+		
+		col_Roles.setCellValueFactory(data -> data.getValue().rolesProperty());
+		col_Roles.setPrefWidth(width - 40 - 150 - 200 - 250 - 20); // Remainder width
+
+		// Add columns to table safely (using List.of to avoid varargs warning)
+		tableView_Users.getColumns().addAll(
+			List.of(col_Username, col_Name, col_Email, col_Roles)
+		);
+
+		tableView_Users.setLayoutX(20);
+		tableView_Users.setLayoutY(130);
+		tableView_Users.setPrefWidth(width - 40);
+		tableView_Users.setPrefHeight(380);
+		tableView_Users.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
 
 		// --- Setup GUI Area 3 (Footer) ---
 		setupButtonUI(button_Return, "Dialog", 18, 210, Pos.CENTER, 20, 540);
@@ -154,18 +121,16 @@ public class ViewListUsers {
 		setupButtonUI(button_Quit, "Dialog", 18, 210, Pos.CENTER, 570, 540);
 		button_Quit.setOnAction((_) -> {ControllerListUsers.performQuit();});
 		
-		// Add all widgets to the Root Pane ONCE.
-		// The Controller will NOT clear/re-add these.
+		// Add all widgets to the Root Pane
 		theRootPane.getChildren().addAll(
 			label_PageTitle, label_UserDetails, line_Separator1,
-			label_Col_Username, label_Col_Name, label_Col_Email, label_Col_Role,
-			line_Separator2, scrollPane_Users,
+			tableView_Users,
 			line_Separator4, button_Return, button_Logout, button_Quit
 		);
 	}
 
 	/*-*******************************************************************************************
-	Helper Methods (Safe Versions)
+	Helper Methods
 	*/
 
 	protected static void setupLabelUI(Label l, String ff, double f, double w, Pos p, double x, double y){
@@ -182,5 +147,27 @@ public class ViewListUsers {
 		b.setAlignment(p);
 		b.setLayoutX(x);
 		b.setLayoutY(y);		
+	}
+
+	/**
+	 * Data model for a single row in the users TableView.
+	 */
+	public static class UserRow {
+		private final SimpleStringProperty username;
+		private final SimpleStringProperty name;
+		private final SimpleStringProperty email;
+		private final SimpleStringProperty roles;
+
+		public UserRow(String username, String name, String email, String roles) {
+			this.username = new SimpleStringProperty(username);
+			this.name = new SimpleStringProperty(name);
+			this.email = new SimpleStringProperty(email);
+			this.roles = new SimpleStringProperty(roles);
+		}
+
+		public SimpleStringProperty usernameProperty() { return username; }
+		public SimpleStringProperty nameProperty() { return name; }
+		public SimpleStringProperty emailProperty() { return email; }
+		public SimpleStringProperty rolesProperty() { return roles; }
 	}
 }
