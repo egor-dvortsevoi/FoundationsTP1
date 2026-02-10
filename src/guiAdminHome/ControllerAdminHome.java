@@ -10,6 +10,8 @@ import database.Database;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ChoiceDialog;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
 
 /*******
  * <p> Title: GUIAdminHomePage Class. </p>
@@ -96,7 +98,8 @@ public class ControllerAdminHome {
 		String msg = "Code: " + invitationCode + " for role " + theSelectedRole + 
 				" was sent to: " + emailAddress + deadlineStr;
 		System.out.println(msg);
-		ViewAdminHome.alertEmailSent.setContentText(msg);
+		copyToClipboard(invitationCode);
+		ViewAdminHome.alertEmailSent.setContentText(msg + "\n\n(Invitation code copied to clipboard)");
 		ViewAdminHome.alertEmailSent.showAndWait();
 		
 		// Update the Admin Home pages status
@@ -155,7 +158,8 @@ public class ControllerAdminHome {
 		String selectedUser = selection.get();
 		String otp = UUID.randomUUID().toString().substring(0, 8);
 		applicationMain.FoundationsMain.database.setOneTimePassword(selectedUser, otp);
-		showAlert("One-Time Password Set", "OTP for " + selectedUser + ": " + otp);
+		copyToClipboard(otp);
+		showAlert("One-Time Password Set", "OTP for " + selectedUser + ": " + otp + "\n\n(Copied to clipboard)");
 	}
 	
 	/**********
@@ -224,6 +228,15 @@ public class ControllerAdminHome {
 		ViewAdminHome.alertNotImplemented.setHeaderText(null);
 		ViewAdminHome.alertNotImplemented.setContentText(message);
 		ViewAdminHome.alertNotImplemented.showAndWait();
+	}
+
+	/**
+	 * Copies the given text to the system clipboard.
+	 */
+	private static void copyToClipboard(String text) {
+		ClipboardContent content = new ClipboardContent();
+		content.putString(text);
+		Clipboard.getSystemClipboard().setContent(content);
 	}
 	
 	/**********
