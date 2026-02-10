@@ -80,7 +80,12 @@ public class ViewStudentHome {
 			new CheckBox("Show only posts with unread replies");
 	protected static CheckBox checkbox_MyPostsOnly =
 			new CheckBox("My Posts Only");
-	
+
+	// Search widgets (Task 3.4)
+	protected static TextField text_Search = new TextField();
+	protected static ComboBox<String> combo_SearchThread = new ComboBox<>();
+	protected static Button button_Search = new Button("Search");
+
 	// New Post form widgets (initially hidden)
 	protected static Label label_NewPostTitle = new Label("Title:");
 	protected static TextField text_NewPostTitle = new TextField();
@@ -106,8 +111,6 @@ public class ViewStudentHome {
 	protected static Button button_Quit = new Button("Quit");
 	protected static Button button_SwitchRole = new Button("Switch Role");
 
-	// This is the end of the GUI objects for the page.
-	
 	// These attributes are used to configure the page and populate it with this user's information
 	private static ViewStudentHome theView;		// Used to determine if instantiation of the class
 												// is needed
@@ -129,86 +132,76 @@ public class ViewStudentHome {
 	
 	 */
 
-
-	/**********
-	 * <p> Method: displayStudentHome(Stage ps, User user) </p>
-	 * 
-	 * <p> Description: This method is the single entry point from outside this package to cause
-	 * the Student Home page to be displayed.
-	 * 
-	 * It first sets up every shared attributes so we don't have to pass parameters.
-	 * 
-	 * It then checks to see if the page has been setup.  If not, it instantiates the class, 
-	 * initializes all the static aspects of the GIUI widgets (e.g., location on the page, font,
-	 * size, and any methods to be performed).
-	 * 
-	 * After the instantiation, the code then populates the elements that change based on the user
-	 * and the system's current state.  It then sets the Scene onto the stage, and makes it visible
-	 * to the user.
-	 * 
-	 * @param ps specifies the JavaFX Stage to be used for this GUI and it's methods
-	 * 
-	 * @param user specifies the User for this GUI and it's methods
-	 * 
-	 */
 	public static void displayStudentHome(Stage ps, User user) {
 		
-		// Establish the references to the GUI and the current user
 		theStage = ps;
 		theUser = user;
 		
-		// If not yet established, populate the static aspects of the GUI
-		if (theView == null) theView = new ViewStudentHome();		// Instantiate singleton if needed
+		if (theView == null) theView = new ViewStudentHome();
 		
-		// Populate the dynamic aspects of the GUI with the data from the user and the current
-		// state of the system.
 		theDatabase.getUserAccountDetails(user.getUserName());
 		applicationMain.FoundationsMain.activeHomePage = theRole;
 		
-		// Refresh the user's roles from the database so the Switch Role button is accurate
 		theUser.setAdminRole(theDatabase.getCurrentAdminRole());
 		theUser.setStudentUser(theDatabase.getCurrentNewStudent());
 		theUser.setStaffUser(theDatabase.getCurrentNewStaff());
 		
 		label_UserDetails.setText("User: " + theUser.getUserName());
-		
-		// Refresh the posts list each time we display this page
+
+		combo_SearchThread.getItems().clear();
+		combo_SearchThread.getItems().add("All");
+		combo_SearchThread.getItems().addAll(theDatabase.getAllThreadNames());
+		combo_SearchThread.setValue("All");
+		combo_NewPostThread.getItems().clear();
+		combo_NewPostThread.getItems().addAll(theDatabase.getAllThreadNames());
+		combo_NewPostThread.setValue("General");
+
+
 		ControllerStudentHome.refreshPostList();
 		
-		// Hide the new post form in case it was left visible
 		showNewPostForm(false);
-
-		// Show the Switch Role button only if the user has multiple roles
 		button_SwitchRole.setVisible(theUser.getNumRoles() > 1);
 				
-		// Set the title for the window, display the page, and wait for the Admin to do something
 		theStage.setTitle("CSE 360 Foundations: Student Home Page");
 		theStage.setScene(theViewStudentHomeScene);
 		theStage.show();
 	}
-	
-	/**********
-	 * <p> Method: ViewStudentHome() </p>
-	 * 
-	 * <p> Description: This method initializes all the elements of the graphical user interface.
-	 * This method determines the location, size, font, color, and change and event handlers for
-	 * each GUI object.</p>
-	 * 
-	 * This is a singleton and is only performed once.  Subsequent uses fill in the changeable
-	 * fields using the displayRole2Home method.</p>
-	 * 
-	 */
+
 	private ViewStudentHome() {
 
-		// Create the Pane for the list of widgets and the Scene for the window
 		theRootPane = new Pane();
-		theViewStudentHomeScene = new Scene(theRootPane, width, height);	// Create the scene
+		theViewStudentHomeScene = new Scene(theRootPane, width, height);
+		// ===== New Post form layout =====
+
+		label_NewPostTitle.setLayoutX(20);
+		label_NewPostTitle.setLayoutY(120);
+
+		text_NewPostTitle.setLayoutX(120);
+		text_NewPostTitle.setLayoutY(120);
+		text_NewPostTitle.setPrefWidth(400);
+
+		label_NewPostThread.setLayoutX(20);
+		label_NewPostThread.setLayoutY(160);
+
+		combo_NewPostThread.setLayoutX(120);
+		combo_NewPostThread.setLayoutY(160);
+		combo_NewPostThread.setPrefWidth(200);
+
+		label_NewPostContent.setLayoutX(20);
+		label_NewPostContent.setLayoutY(200);
+
+		text_NewPostContent.setLayoutX(120);
+		text_NewPostContent.setLayoutY(200);
+		text_NewPostContent.setPrefWidth(600);
+		text_NewPostContent.setPrefHeight(150);
+
+		button_SubmitPost.setLayoutX(120);
+		button_SubmitPost.setLayoutY(370);
+
+		button_CancelPost.setLayoutX(260);
+		button_CancelPost.setLayoutY(370);
+
 		
-		// Set the title for the window
-		
-		// Populate the window with the title and other common widgets and set their static state
-		
-		// GUI Area 1
 		label_PageTitle.setText("Student Home Page");
 		setupLabelUI(label_PageTitle, "Arial", 28, width, Pos.CENTER, 0, 5);
 
@@ -218,10 +211,14 @@ public class ViewStudentHome {
 		setupButtonUI(button_UpdateThisUser, "Dialog", 18, 170, Pos.CENTER, 610, 45);
 		button_UpdateThisUser.setOnAction((_) -> {ControllerStudentHome.performUpdate(); });
 		
+		button_SwitchRole.setOnAction((_) -> {
+		    ControllerStudentHome.performSwitchRole();
+		});
+
+		
 		// GUI Area 2 — Discussion Posts
 		setupLabelUI(label_Posts, "Arial", 20, 300, Pos.BASELINE_LEFT, 20, 105);
-		
-		// Set up the TableView with sortable columns
+
 		col_Title.setCellValueFactory(data -> data.getValue().titleProperty());
 		col_Title.setPrefWidth(200);
 		col_Thread.setCellValueFactory(data -> data.getValue().threadProperty());
@@ -248,7 +245,38 @@ public class ViewStudentHome {
 		});
 		
 		setupButtonUI(button_NewPost, "Dialog", 14, 120, Pos.CENTER, 20, 395);
+		
+		// Search bar (Task 3.4)
+		text_Search.setLayoutX(450);
+		text_Search.setLayoutY(395);
+		text_Search.setPrefWidth(200);
+		text_Search.setPromptText("Search keywords");
+		text_Search.textProperty().addListener((obs, oldText, newText) -> {
+		    ControllerStudentHome.refreshPostList();
+		});
+
+
+		combo_SearchThread.setLayoutX(660);
+		combo_SearchThread.setLayoutY(395);
+		combo_SearchThread.setPrefWidth(140);
+		combo_SearchThread.setOnAction((_) -> {
+		    ControllerStudentHome.refreshPostList();
+		});
+
+
+		setupButtonUI(button_Search, "Dialog", 14, 100, Pos.CENTER, 820, 395);
+		button_Search.setOnAction((_) -> ControllerStudentHome.refreshPostList());
+
 		button_NewPost.setOnAction((_) -> { showNewPostForm(true); });
+
+		button_SubmitPost.setOnAction((_) -> {
+		    ControllerStudentHome.submitNewPost();
+		});
+
+		button_CancelPost.setOnAction((_) -> {
+		    showNewPostForm(false);
+		});
+
 		
 		setupButtonUI(button_ViewPost, "Dialog", 14, 120, Pos.CENTER, 150, 395);
 		button_ViewPost.setOnAction((_) -> { ControllerStudentHome.viewSelectedPost(); });
@@ -260,88 +288,24 @@ public class ViewStudentHome {
 		checkbox_UnreadOnly.setLayoutX(290);
 		checkbox_UnreadOnly.setLayoutY(415);
 		checkbox_UnreadOnly.setOnAction((_) -> { ControllerStudentHome.refreshPostList(); });
-		
-		// New Post form — initially hidden, overlays the post list area
-		setupLabelUI(label_NewPostTitle, "Arial", 14, 60, Pos.BASELINE_LEFT, 20, 110);
-		text_NewPostTitle.setLayoutX(90);
-		text_NewPostTitle.setLayoutY(107);
-		text_NewPostTitle.setPrefWidth(width - 130);
-		text_NewPostTitle.setPromptText("Enter post title");
-		
-		setupLabelUI(label_NewPostThread, "Arial", 14, 60, Pos.BASELINE_LEFT, 20, 145);
-		combo_NewPostThread.setLayoutX(90);
-		combo_NewPostThread.setLayoutY(142);
-		combo_NewPostThread.setPrefWidth(200);
-		
-		setupLabelUI(label_NewPostContent, "Arial", 14, 60, Pos.BASELINE_LEFT, 20, 180);
-		text_NewPostContent.setLayoutX(90);
-		text_NewPostContent.setLayoutY(177);
-		text_NewPostContent.setPrefWidth(width - 130);
-		text_NewPostContent.setPrefHeight(180);
-		text_NewPostContent.setPromptText("Write your post here...");
-		text_NewPostContent.setWrapText(true);
-		
-		setupButtonUI(button_SubmitPost, "Dialog", 14, 120, Pos.CENTER, 90, 370);
-		button_SubmitPost.setOnAction((_) -> { ControllerStudentHome.submitNewPost(); });
-		
-		setupButtonUI(button_CancelPost, "Dialog", 14, 120, Pos.CENTER, 220, 370);
-		button_CancelPost.setOnAction((_) -> { showNewPostForm(false); });
-		
-		alertPostError.setTitle("Post Error");
-		alertPostError.setHeaderText(null);
-		
-		alertPostSuccess.setTitle("Post Created");
-		alertPostSuccess.setHeaderText("Success");
-		alertPostSuccess.setContentText("Your post has been created.");
-		
-		// Start with new post form hidden
-		setNewPostFormVisible(false);
-		
-		// GUI Area 3
-        setupButtonUI(button_Logout, "Dialog", 18, 250, Pos.CENTER, 20, 540);
-        button_Logout.setOnAction((_) -> {ControllerStudentHome.performLogout(); });
-        
-        setupButtonUI(button_Quit, "Dialog", 18, 250, Pos.CENTER, 300, 540);
-        button_Quit.setOnAction((_) -> {ControllerStudentHome.performQuit(); });
 
-        setupButtonUI(button_SwitchRole, "Dialog", 18, 180, Pos.CENTER, 580, 540);
-        button_SwitchRole.setOnAction((_) -> {ControllerStudentHome.performSwitchRole(); });
+		theRootPane.getChildren().addAll(
+			    label_PageTitle, label_UserDetails, button_UpdateThisUser, line_Separator1,
+			    label_Posts, tableView_Posts, checkbox_MyPostsOnly, checkbox_UnreadOnly,
+			    button_NewPost, button_ViewPost,
+			    line_Separator4, button_Logout, button_Quit, button_SwitchRole,
+			    text_Search, combo_SearchThread, button_Search,
 
-		// This is the end of the GUI initialization code
-		
-		// Place all of the widget items into the Root Pane's list of children
+			    // New Post form widgets
+			    label_NewPostTitle, text_NewPostTitle,
+			    label_NewPostThread, combo_NewPostThread,
+			    label_NewPostContent, text_NewPostContent,
+			    button_SubmitPost, button_CancelPost
+			);
 
-         theRootPane.getChildren().addAll(
-			label_PageTitle, label_UserDetails, button_UpdateThisUser, line_Separator1,
-			label_Posts, tableView_Posts, checkbox_MyPostsOnly, checkbox_UnreadOnly,
-			button_NewPost, button_ViewPost,
-			label_NewPostTitle, text_NewPostTitle,
-			label_NewPostThread, combo_NewPostThread,
-			label_NewPostContent, text_NewPostContent,
-			button_SubmitPost, button_CancelPost,
-	        line_Separator4, button_Logout, button_Quit, button_SwitchRole);
-}
-	
-	
-	/*-********************************************************************************************
+	}
 
-	Helper methods to reduce code length
-
-	 */
-	
-	/**********
-	 * Private local method to initialize the standard fields for a label
-	 * 
-	 * @param l		The Label object to be initialized
-	 * @param ff	The font to be used
-	 * @param f		The size of the font to be used
-	 * @param w		The width of the Button
-	 * @param p		The alignment (e.g. left, centered, or right)
-	 * @param x		The location from the left edge (x axis)
-	 * @param y		The location from the top (y axis)
-	 */
-	private static void setupLabelUI(Label l, String ff, double f, double w, Pos p, double x, 
-			double y){
+	private static void setupLabelUI(Label l, String ff, double f, double w, Pos p, double x, double y){
 		l.setFont(Font.font(ff, f));
 		l.setMinWidth(w);
 		l.setAlignment(p);
@@ -349,68 +313,38 @@ public class ViewStudentHome {
 		l.setLayoutY(y);		
 	}
 	
-	
-	/**********
-	 * Private local method to initialize the standard fields for a button
-	 * 
-	 * @param b		The Button object to be initialized
-	 * @param ff	The font to be used
-	 * @param f		The size of the font to be used
-	 * @param w		The width of the Button
-	 * @param p		The alignment (e.g. left, centered, or right)
-	 * @param x		The location from the left edge (x axis)
-	 * @param y		The location from the top (y axis)
-	 */
-	private static void setupButtonUI(Button b, String ff, double f, double w, Pos p, double x, 
-			double y){
+	private static void setupButtonUI(Button b, String ff, double f, double w, Pos p, double x, double y){
 		b.setFont(Font.font(ff, f));
 		b.setMinWidth(w);
 		b.setAlignment(p);
 		b.setLayoutX(x);
 		b.setLayoutY(y);		
 	}
-	
-	
-	/**********
-	 * Show or hide the new post form, toggling the post list visibility accordingly.
-	 */
+
 	protected static void showNewPostForm(boolean show) {
-		showingNewPostForm = show;
-		setNewPostFormVisible(show);
-		// Hide post list and buttons when showing the form
-		label_Posts.setVisible(!show);
-		tableView_Posts.setVisible(!show);
-		checkbox_MyPostsOnly.setVisible(!show);
-		checkbox_UnreadOnly.setVisible(!show);
-		button_NewPost.setVisible(!show);
-		button_ViewPost.setVisible(!show);
-		if (show) {
-			text_NewPostTitle.setText("");
-			text_NewPostContent.setText("");
-			// Refresh the thread list and default to "General"
-			combo_NewPostThread.getItems().clear();
-			combo_NewPostThread.getItems().addAll(theDatabase.getAllThreadNames());
-			combo_NewPostThread.setValue("General");
-		}
-	}
-	
-	/**********
-	 * Set the visibility of the new post form widgets.
-	 */
-	private static void setNewPostFormVisible(boolean visible) {
-		label_NewPostTitle.setVisible(visible);
-		text_NewPostTitle.setVisible(visible);
-		label_NewPostThread.setVisible(visible);
-		combo_NewPostThread.setVisible(visible);
-		label_NewPostContent.setVisible(visible);
-		text_NewPostContent.setVisible(visible);
-		button_SubmitPost.setVisible(visible);
-		button_CancelPost.setVisible(visible);
+	    showingNewPostForm = show;
+
+	    label_Posts.setVisible(!show);
+	    tableView_Posts.setVisible(!show);
+	    checkbox_MyPostsOnly.setVisible(!show);
+	    checkbox_UnreadOnly.setVisible(!show);
+	    button_NewPost.setVisible(!show);
+	    button_ViewPost.setVisible(!show);
+	    text_Search.setVisible(!show);
+	    combo_SearchThread.setVisible(!show);
+	    button_Search.setVisible(!show);
+
+	    label_NewPostTitle.setVisible(show);
+	    text_NewPostTitle.setVisible(show);
+	    label_NewPostThread.setVisible(show);
+	    combo_NewPostThread.setVisible(show);
+	    label_NewPostContent.setVisible(show);
+	    text_NewPostContent.setVisible(show);
+	    button_SubmitPost.setVisible(show);
+	    button_CancelPost.setVisible(show);
 	}
 
-	/**
-	 * Data model for a single row in the posts TableView.
-	 */
+
 	public static class PostRow {
 		private final SimpleStringProperty title;
 		private final SimpleStringProperty thread;
@@ -436,3 +370,4 @@ public class ViewStudentHome {
 		public int getPostIndex() { return postIndex; }
 	}
 }
+

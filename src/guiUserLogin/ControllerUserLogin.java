@@ -82,16 +82,6 @@ public class ControllerUserLogin {
     	}
     	// If validationOutput is empty, then continue as normal
     	
-    	// Validate password format (errors are hidden from the user)
-    	String passwordValidation = guiTools.PasswordRecognizer.checkForValidPassword(password);
-    	if (!passwordValidation.isEmpty()) {
-    		// Errors are hidden from the user - show generic message
-    		ViewUserLogin.alertUsernamePasswordError.setContentText(
-    				"Incorrect username/password. Try again!");
-    		ViewUserLogin.alertUsernamePasswordError.showAndWait();
-    		return;
-    	}
-    	
 		// Fetch the user and verify the username
      	if (theDatabase.getUserAccountDetails(username) == false) {
      		// Don't provide too much information.  Don't say the username is invalid or the
@@ -103,13 +93,48 @@ public class ControllerUserLogin {
     	}
 		// System.out.println("*** Username is valid");
 		
-		// Check to see that the login password matches the account password
+		// Check to see that the login password matches the account password or OTP
     	String actualPassword = theDatabase.getCurrentPassword();
+    	String storedOTP = theDatabase.getOneTimePassword(username);
+    	boolean isOTP = storedOTP != null && storedOTP.equals(password);
     	
-    	if (password.compareTo(actualPassword) != 0) {
+    	// Validate password format (skip if the entered password is a valid OTP)
+    	if (!isOTP) {
+    		String passwordValidation = guiTools.PasswordRecognizer.checkForValidPassword(password);
+    		if (!passwordValidation.isEmpty()) {
+    			ViewUserLogin.alertUsernamePasswordError.setContentText(
+    					"Incorrect username/password. Try again!");
+    			ViewUserLogin.alertUsernamePasswordError.showAndWait();
+    			return;
+    		}
+    	}
+    	
+    	// Check if password matches actual password OR the OTP
+    	if (!isOTP && password.compareTo(actualPassword) != 0) {
     		ViewUserLogin.alertUsernamePasswordError.setContentText(
     				"Incorrect username/password. Try again!");
     		ViewUserLogin.alertUsernamePasswordError.showAndWait();
+    		return;
+    	}
+    	
+    	// If OTP was used, clear it and send to password reset
+    	if (isOTP) {
+    		theDatabase.clearOneTimePassword(username);
+    		
+    		User tempUser = new User(
+    			username,
+    			actualPassword,
+    			theDatabase.getCurrentFirstName(),
+    			theDatabase.getCurrentMiddleName(),
+    			theDatabase.getCurrentLastName(),
+    			theDatabase.getCurrentPreferredFirstName(),
+    			theDatabase.getCurrentEmailAddress(),
+    			theDatabase.getCurrentAdminRole(),
+    			theDatabase.getCurrentNewStudent(),
+    			theDatabase.getCurrentNewStaff()
+    		);
+    		
+    		guiUserUpdate.ViewUserUpdate.displayUserUpdate(theStage, tempUser);
     		return;
     	}
 		// System.out.println("*** Password is valid for this user");

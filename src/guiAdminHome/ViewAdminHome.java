@@ -185,6 +185,8 @@ public class ViewAdminHome {
 
 		// Set the role for potential users to the default (No role selected)
 		combobox_SelectRole.getSelectionModel().select(0);
+		// Update the displayed username for the current user
+		label_UserDetails.setText("User: " + theUser.getUserName());
 		// Show the Switch Role button only if the user has multiple roles
 		button_SwitchRole.setVisible(theUser.getNumRoles() > 1);				
 		// Set the title for the window, display the page, and wait for the Admin to do something

@@ -99,7 +99,15 @@ public class ControllerNewAccount {
     	ViewNewAccount.alertUsernameError.showAndWait();
 		return;
 		}
-				
+
+		// Check if the username is already taken
+		if (theDatabase.doesUserExist(username)) {
+			ViewNewAccount.alertUsernameError.setContentText(
+					"The username \"" + username + "\" is already taken. Please choose a different username.");
+			ViewNewAccount.alertUsernameError.showAndWait();
+			return;
+		}
+
 		// Validate invitation code format (errors hidden from user)
 		String invCodeInput = ViewNewAccount.theInvitationCode;
 		String invCodeValidation = guiTools.InvitationCodeRecognizer.checkForValidInvitationCode(invCodeInput);
@@ -155,7 +163,7 @@ public class ControllerNewAccount {
             
             // The account has been set, so remove the invitation from the system
             theDatabase.removeInvitationAfterUse(
-            		ViewNewAccount.text_Invitation.getText());
+            		ViewNewAccount.theInvitationCode);
             
             // Set the database so it has this user and the current user
             theDatabase.getUserAccountDetails(username);
