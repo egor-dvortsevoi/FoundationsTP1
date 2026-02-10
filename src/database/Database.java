@@ -1805,5 +1805,48 @@ public boolean deleteOwnPost(int postId, String username) {
     return false;
 }
 
+/*******
+ * Search posts by keyword and optional thread.
+ */
+public List<Post> searchPosts(String keyword, String threadName) {
+    List<Post> posts = new ArrayList<>();
+
+    StringBuilder sql = new StringBuilder(
+        "SELECT * FROM postsDB WHERE (LOWER(title) LIKE ? OR LOWER(content) LIKE ?)"
+    );
+
+    if (threadName != null && !threadName.isBlank()) {
+        sql.append(" AND threadName = ?");
+    }
+
+    sql.append(" ORDER BY timestamp DESC");
+
+    try (PreparedStatement pstmt = connection.prepareStatement(sql.toString())) {
+        String like = "%" + keyword.toLowerCase() + "%";
+        pstmt.setString(1, like);
+        pstmt.setString(2, like);
+
+        if (threadName != null && !threadName.isBlank()) {
+            pstmt.setString(3, threadName);
+        }
+
+        ResultSet rs = pstmt.executeQuery();
+        while (rs.next()) {
+            posts.add(new Post(
+                rs.getInt("id"),
+                rs.getString("authorUsername"),
+                rs.getString("threadName"),
+                rs.getString("title"),
+                rs.getString("content"),
+                rs.getTimestamp("timestamp"),
+                rs.getBoolean("isDeleted")
+            ));
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+
+    return posts;
+}
 
 }

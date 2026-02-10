@@ -55,14 +55,37 @@ public class ControllerStudentHome {
 	/**********
 	 * Refresh the list of posts displayed on the Student Home page.
 	 */
+	/**********
+	 * Refresh the list of posts displayed on the Student Home page.
+	 */
 	protected static void refreshPostList() {
 		ViewStudentHome.tableView_Posts.getItems().clear();
 		boolean unreadOnly = ViewStudentHome.checkbox_UnreadOnly.isSelected();
 		boolean myPostsOnly = ViewStudentHome.checkbox_MyPostsOnly.isSelected();
 		String username = ViewStudentHome.theUser.getUserName();
-		List<Post> allPosts = myPostsOnly
-				? theDatabase.getMyPosts(username)
-				: theDatabase.getAllPosts();
+
+		// Task 3.4 additions
+		String keyword = ViewStudentHome.text_Search.getText().trim();
+	    String threadFilter = ViewStudentHome.combo_SearchThread.getValue();
+
+		List<Post> allPosts;
+
+		// Task 3.4 search logic
+		if ("All".equals(threadFilter)) {
+		    threadFilter = null;
+		}
+
+		if (!keyword.isEmpty()) {
+			allPosts = theDatabase.searchPosts(keyword, threadFilter);
+			if (myPostsOnly) {
+				allPosts.removeIf(p -> !p.getAuthorUsername().equals(username));
+			}
+		} else {
+			allPosts = myPostsOnly
+					? theDatabase.getMyPosts(username)
+					: theDatabase.getAllPosts();
+		}
+
 		ViewStudentHome.currentPosts = new java.util.ArrayList<>();
 		for (Post p : allPosts) {
 			int unreadCount = theDatabase.getUnreadReplyCount(username, p.getId());
@@ -106,10 +129,14 @@ public class ControllerStudentHome {
 		
 		Post post = new Post(ViewStudentHome.theUser.getUserName(), thread, title, content);
 		theDatabase.createPost(post);
-		
+
+		ViewStudentHome.alertPostSuccess.setTitle("Post Created");
+		ViewStudentHome.alertPostSuccess.setContentText("Your post was created successfully.");
 		ViewStudentHome.alertPostSuccess.showAndWait();
+
 		ViewStudentHome.showNewPostForm(false);
 		refreshPostList();
+
 	}
 
 	/**********
@@ -184,6 +211,9 @@ public class ControllerStudentHome {
 		
 		ViewPostDetail.text_ReplyContent.setText("");
 		ViewPostDetail.refreshReplies();
+		ControllerStudentHome.refreshPostList();
+
+
 	}
 
 	/**********
