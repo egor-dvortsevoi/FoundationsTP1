@@ -1,12 +1,15 @@
 package guiAdminHome;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import database.Database;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.ChoiceDialog;
 
 /*******
  * <p> Title: GUIAdminHomePage Class. </p>
@@ -128,20 +131,31 @@ public class ControllerAdminHome {
 	 * this function has not yet been implemented. </p>
 	 */
 	protected static void setOnetimePassword () {
-		String selectedUser = ViewAdminHome.combobox_SelectUser.getValue();
-		if (selectedUser == null || selectedUser.equals("<Select a User>")) {
-			ViewAdminHome.alertNotImplemented.setTitle("*** WARNING ***");
-			ViewAdminHome.alertNotImplemented.setHeaderText("One-Time Password Issue");
-			ViewAdminHome.alertNotImplemented.setContentText("Please select a user first.");
-			ViewAdminHome.alertNotImplemented.showAndWait();
+		// Build list of users for the popup
+		List<String> allUsers = theDatabase.getUserList();
+		List<String> selectableUsers = allUsers.stream()
+				.filter(u -> !u.equals("<Select a User>"))
+				.collect(Collectors.toList());
+
+		if (selectableUsers.isEmpty()) {
+			showAlert("No Users", "There are no users available.");
 			return;
 		}
+
+		ChoiceDialog<String> dialog = new ChoiceDialog<>(selectableUsers.get(0), selectableUsers);
+		dialog.setTitle("Set One-Time Password");
+		dialog.setHeaderText("Select a user to set a one-time password for");
+		dialog.setContentText("User:");
+		Optional<String> selection = dialog.showAndWait();
+
+		if (!selection.isPresent()) {
+			return;
+		}
+
+		String selectedUser = selection.get();
 		String otp = UUID.randomUUID().toString().substring(0, 8);
 		applicationMain.FoundationsMain.database.setOneTimePassword(selectedUser, otp);
-		ViewAdminHome.alertNotImplemented.setTitle("One-Time Password Set");
-		ViewAdminHome.alertNotImplemented.setHeaderText("OTP for " + selectedUser);
-		ViewAdminHome.alertNotImplemented.setContentText("One-Time Password: " + otp);
-		ViewAdminHome.alertNotImplemented.showAndWait();
+		showAlert("One-Time Password Set", "OTP for " + selectedUser + ": " + otp);
 	}
 	
 	/**********
@@ -149,37 +163,67 @@ public class ControllerAdminHome {
 	 * 
 	 * Title: deleteUser () Method. </p>
 	 * 
-	 * <p> Description: Protected method that is currently a stub informing the user that
-	 * this function has not yet been implemented. </p>
+	 * <p> Description: Deletes the selected user after confirmation. Prevents deletion of
+	 * the last admin to ensure at least one admin always exists. </p>
 	 */
 	protected static void deleteUser() {
-		String selectedUser = ViewAdminHome.combobox_SelectUser.getValue();
-		if (selectedUser == null || selectedUser.equals("<Select a User>")) {
-			ViewAdminHome.alertNotImplemented.setTitle("*** WARNING ***");
-			ViewAdminHome.alertNotImplemented.setHeaderText("Delete User Issue");
-			ViewAdminHome.alertNotImplemented.setContentText("Please select a user first.");
-			ViewAdminHome.alertNotImplemented.showAndWait();
+		// Build a list of deletable users (everyone except the current admin)
+		String currentUser = ViewAdminHome.theUser.getUserName();
+		List<String> allUsers = theDatabase.getUserList();
+		List<String> deletableUsers = allUsers.stream()
+				.filter(u -> !u.equals("<Select a User>") && !u.equals(currentUser))
+				.collect(Collectors.toList());
+
+		if (deletableUsers.isEmpty()) {
+			showAlert("No Users", "There are no other users to delete.");
 			return;
 		}
+
+		// Show a popup dialog with the list of users
+		ChoiceDialog<String> dialog = new ChoiceDialog<>(deletableUsers.get(0), deletableUsers);
+		dialog.setTitle("Delete a User");
+		dialog.setHeaderText("Select a user to delete");
+		dialog.setContentText("User:");
+		Optional<String> selection = dialog.showAndWait();
+
+		if (!selection.isPresent()) {
+			return; // User cancelled
+		}
+
+		String selectedUser = selection.get();
+
+		// Prevent deleting the last admin
+		if (theDatabase.isUserAdmin(selectedUser) && theDatabase.getNumberOfAdmins() <= 1) {
+			showAlert("Cannot Delete Last Admin",
+					"The user \"" + selectedUser + "\" is the only admin.\n"
+					+ "At least one admin must exist at all times.");
+			return;
+		}
+
+		// Ask for confirmation
 		Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
 		confirm.setTitle("Confirm Delete");
-		confirm.setHeaderText("Delete user: " + selectedUser + "?");
+		confirm.setHeaderText("Are you sure you want to delete \"" + selectedUser + "\"?");
 		confirm.setContentText("This action cannot be undone.");
 		Optional<ButtonType> result = confirm.showAndWait();
+
 		if (result.isPresent() && result.get() == ButtonType.OK) {
-			boolean deleted = applicationMain.FoundationsMain.database.deleteUser(selectedUser);
-			if (deleted) {
-				ViewAdminHome.populateUserList();
-				ViewAdminHome.alertNotImplemented.setTitle("Success");
-				ViewAdminHome.alertNotImplemented.setHeaderText("User Deleted");
-				ViewAdminHome.alertNotImplemented.setContentText("User " + selectedUser + " has been deleted.");
+			if (theDatabase.deleteUser(selectedUser)) {
+				showAlert("User Deleted", "User \"" + selectedUser + "\" has been successfully deleted.");
 			} else {
-				ViewAdminHome.alertNotImplemented.setTitle("Error");
-				ViewAdminHome.alertNotImplemented.setHeaderText("Delete Failed");
-				ViewAdminHome.alertNotImplemented.setContentText("Could not delete user " + selectedUser + ".");
+				showAlert("Delete Failed", "Could not delete user \"" + selectedUser + "\".");
 			}
-			ViewAdminHome.alertNotImplemented.showAndWait();
 		}
+	}
+
+	/**
+	 * Displays an informational alert with the given title and message.
+	 */
+	private static void showAlert(String title, String message) {
+		ViewAdminHome.alertNotImplemented.setTitle(title);
+		ViewAdminHome.alertNotImplemented.setHeaderText(null);
+		ViewAdminHome.alertNotImplemented.setContentText(message);
+		ViewAdminHome.alertNotImplemented.showAndWait();
 	}
 	
 	/**********
