@@ -136,7 +136,10 @@ public class ControllerStudentHome {
 
 		ViewStudentHome.showNewPostForm(false);
 		refreshPostList();
-
+		
+		// New post fields are cleared after previous post
+		ViewStudentHome.text_NewPostTitle.clear();
+		ViewStudentHome.text_NewPostContent.clear(); 
 	}
 
 	/**********

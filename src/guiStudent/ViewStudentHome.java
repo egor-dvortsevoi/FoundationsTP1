@@ -232,7 +232,9 @@ public class ViewStudentHome {
 		col_Date.setCellValueFactory(data -> data.getValue().dateProperty());
 		col_Date.setPrefWidth(width - 40 - 200 - 100 - 70 - 70 - 22);
 		
-		tableView_Posts.getColumns().addAll(col_Title, col_Thread, col_Replies, col_Unread, col_Date);
+		tableView_Posts.getColumns().addAll(
+			    List.of(col_Title, col_Thread, col_Replies, col_Unread, col_Date)
+			);
 		tableView_Posts.setLayoutX(20);
 		tableView_Posts.setLayoutY(135);
 		tableView_Posts.setPrefWidth(width - 40);
@@ -247,8 +249,8 @@ public class ViewStudentHome {
 		setupButtonUI(button_NewPost, "Dialog", 14, 120, Pos.CENTER, 20, 395);
 		
 		// Search bar (Task 3.4)
-		text_Search.setLayoutX(450);
-		text_Search.setLayoutY(395);
+		text_Search.setLayoutX(20);
+		text_Search.setLayoutY(485);
 		text_Search.setPrefWidth(200);
 		text_Search.setPromptText("Search keywords");
 		text_Search.textProperty().addListener((obs, oldText, newText) -> {
@@ -256,15 +258,15 @@ public class ViewStudentHome {
 		});
 
 
-		combo_SearchThread.setLayoutX(660);
-		combo_SearchThread.setLayoutY(395);
+		combo_SearchThread.setLayoutX(230);
+		combo_SearchThread.setLayoutY(485);
 		combo_SearchThread.setPrefWidth(140);
 		combo_SearchThread.setOnAction((_) -> {
 		    ControllerStudentHome.refreshPostList();
 		});
 
 
-		setupButtonUI(button_Search, "Dialog", 14, 100, Pos.CENTER, 820, 395);
+		setupButtonUI(button_Search, "Dialog", 14, 100, Pos.CENTER, 390, 485);
 		button_Search.setOnAction((_) -> ControllerStudentHome.refreshPostList());
 
 		button_NewPost.setOnAction((_) -> { showNewPostForm(true); });
@@ -292,7 +294,7 @@ public class ViewStudentHome {
 		theRootPane.getChildren().addAll(
 			    label_PageTitle, label_UserDetails, button_UpdateThisUser, line_Separator1,
 			    label_Posts, tableView_Posts, checkbox_MyPostsOnly, checkbox_UnreadOnly,
-			    button_NewPost, button_ViewPost,
+			    button_NewPost, button_ViewPost, 
 			    line_Separator4, button_Logout, button_Quit, button_SwitchRole,
 			    text_Search, combo_SearchThread, button_Search,
 
@@ -302,6 +304,15 @@ public class ViewStudentHome {
 			    label_NewPostContent, text_NewPostContent,
 			    button_SubmitPost, button_CancelPost
 			);
+		
+		setupButtonUI(button_Logout, "Dialog", 18, 250, Pos.CENTER, 20, 540);
+		button_Logout.setOnAction((_) -> {ControllerStudentHome.performLogout(); });
+    
+		setupButtonUI(button_Quit, "Dialog", 18, 250, Pos.CENTER, 300, 540);
+		button_Quit.setOnAction((_) -> {ControllerStudentHome.performQuit(); });
+
+		setupButtonUI(button_SwitchRole, "Dialog", 18, 180, Pos.CENTER, 580, 540);
+		button_SwitchRole.setOnAction((_) -> {ControllerStudentHome.performSwitchRole(); });
 
 	}
 
