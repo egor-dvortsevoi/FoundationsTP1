@@ -1,6 +1,8 @@
 package guiTools;
 
-
+/**
+ * Finite-state-machine based recognizer for validating invitation code format.
+ */
 public class InvitationCodeRecognizer {
 	/**
 	 * <p> Title: FSM-translated InvitationCodeRecognizer. </p>
@@ -22,8 +24,11 @@ public class InvitationCodeRecognizer {
 	 * 
 	 */
 
+	/** Error text for the most recent validation. */
 	public static String invitationCodeErrorMessage = "";		// The error message text
+	/** Input value from the most recent validation. */
 	public static String invitationCodeInput = "";				// The input being processed
+	/** Index of the detected error in the most recent validation. */
 	public static int invitationCodeIndexofError = -1;			// The index of error location
 	private static int state = 0;						// The current state value
 	private static int nextState = 0;					// The next state value
@@ -34,6 +39,12 @@ public class InvitationCodeRecognizer {
 	private static boolean running;						// The flag that specifies if the FSM is 
 														// running
 	private static int codeSize = 0;					// Track code length
+
+	/**
+	 * Creates an invitation code recognizer.
+	 */
+	public InvitationCodeRecognizer() {
+	}
 
 	// Private method to display debugging data
 	private static void displayDebuggingInfo() {

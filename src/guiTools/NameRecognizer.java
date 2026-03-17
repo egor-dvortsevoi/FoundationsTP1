@@ -1,6 +1,8 @@
 package guiTools;
 
-
+/**
+ * Finite-state-machine based recognizer for validating person names.
+ */
 public class NameRecognizer {
 	/**
 	 * <p> Title: FSM-translated NameRecognizer. </p>
@@ -22,8 +24,11 @@ public class NameRecognizer {
 	 * 
 	 */
 
+	/** Error text for the most recent validation. */
 	public static String nameErrorMessage = "";			// The error message text
+	/** Input value from the most recent validation. */
 	public static String nameInput = "";				// The input being processed
+	/** Index of the detected error in the most recent validation. */
 	public static int nameIndexofError = -1;			// The index of error location
 	private static int state = 0;						// The current state value
 	private static int nextState = 0;					// The next state value
@@ -34,6 +39,12 @@ public class NameRecognizer {
 	private static boolean running;						// The flag that specifies if the FSM is 
 														// running
 	private static int nameSize = 0;					// Track name length
+
+	/**
+	 * Creates a name recognizer.
+	 */
+	public NameRecognizer() {
+	}
 
 	// Private method to display debugging data
 	private static void displayDebuggingInfo() {

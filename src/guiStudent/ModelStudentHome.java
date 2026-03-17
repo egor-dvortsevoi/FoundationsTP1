@@ -1,5 +1,8 @@
 package guiStudent;
 
+/**
+ * Model for the student home page.
+ */
 public class ModelStudentHome {
 
 /*******
@@ -17,5 +20,12 @@ public class ModelStudentHome {
  * @version 1.01		2025-09-13 Updated JavaDoc description
  *  
  */
+
+	/**********
+	 * <p> Method: ModelStudentHome() </p>
+	 * * <p> Description: Default constructor for the student home model. </p>
+	 */
+	public ModelStudentHome() {
+	}
 
 }

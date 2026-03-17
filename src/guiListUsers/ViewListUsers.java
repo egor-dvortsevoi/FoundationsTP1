@@ -54,12 +54,19 @@ public class ViewListUsers {
 	protected static Stage theStage;
 	protected static Pane theRootPane;
 	protected static User theUser;
+	/** Shared scene instance populated for each page display. */
 	public static Scene theListUsersScene = null;
 
 	/*-*******************************************************************************************
 	Constructors
 	*/
 
+	/**
+	 * Displays the list-users page for the specified user.
+	 * 
+	 * @param ps the JavaFX stage to render on
+	 * @param user the currently logged-in user
+	 */
 	public static void displayListUsers(Stage ps, User user) {
 		theStage = ps;
 		theUser = user;
@@ -74,6 +81,9 @@ public class ViewListUsers {
 		ControllerListUsers.repaintTheWindow();
 	}
 
+	/**
+	 * Creates and initializes the list-users view.
+	 */
 	public ViewListUsers() {
 		theRootPane = new Pane();
 		theListUsersScene = new Scene(theRootPane, width, height);
@@ -158,6 +168,14 @@ public class ViewListUsers {
 		private final SimpleStringProperty email;
 		private final SimpleStringProperty roles;
 
+		/**
+		 * Creates a row model for the users table.
+		 * 
+		 * @param username username value
+		 * @param name full name value
+		 * @param email email value
+		 * @param roles role list value
+		 */
 		public UserRow(String username, String name, String email, String roles) {
 			this.username = new SimpleStringProperty(username);
 			this.name = new SimpleStringProperty(name);
@@ -165,9 +183,29 @@ public class ViewListUsers {
 			this.roles = new SimpleStringProperty(roles);
 		}
 
+		/**
+		 * Gets the username property for this row.
+		 * 
+		 * @return username property
+		 */
 		public SimpleStringProperty usernameProperty() { return username; }
+		/**
+		 * Gets the full-name property for this row.
+		 * 
+		 * @return full-name property
+		 */
 		public SimpleStringProperty nameProperty() { return name; }
+		/**
+		 * Gets the email property for this row.
+		 * 
+		 * @return email property
+		 */
 		public SimpleStringProperty emailProperty() { return email; }
+		/**
+		 * Gets the roles property for this row.
+		 * 
+		 * @return roles property
+		 */
 		public SimpleStringProperty rolesProperty() { return roles; }
 	}
 }

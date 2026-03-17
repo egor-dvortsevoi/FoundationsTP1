@@ -9,4 +9,10 @@ package guiListUsers;
  * * @version 1.00		2025-08-20 Initial version
  */
 public class ModelListUsers {
+	/**********
+	 * <p> Method: ModelListUsers() </p>
+	 * * <p> Description: Default constructor for the list users model. </p>
+	 */
+	public ModelListUsers() {
+	}
 }

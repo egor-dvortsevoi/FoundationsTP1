@@ -16,5 +16,11 @@ package guiMultipleRoleDispatch;
  */
 
 public class ModelMultipleRoleDispatch {
+	/**********
+	 * <p> Method: ModelMultipleRoleDispatch() </p>
+	 * * <p> Description: Default constructor for the multiple-role dispatch model. </p>
+	 */
+	public ModelMultipleRoleDispatch() {
+	}
 
 }

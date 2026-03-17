@@ -334,6 +334,13 @@ public class Database {
 		}
 	}
 
+	/*******
+	 * <p> Method: getNumberOfUsers </p>
+	 * 
+	 * <p> Description: Returns the number of user accounts currently stored in the user database. </p>
+	 * 
+	 * @return the number of users in the database.
+	 */
 	public int getNumberOfUsers() {
 		String query = "SELECT COUNT(*) AS count FROM userDB";
 		try {
@@ -374,6 +381,8 @@ public class Database {
 /*******
  * <p> Method: getAllUsers </p>
  * * <p> Description: Returns a 2D list of User details (Username, First + Last Name, Email, Roles).</p>
+	 * 
+	 * @return a 2D list where each row contains username, full name, email, and roles.
  */
 	public ArrayList<ArrayList<String>> getAllUsers() {
 	    // Create the master list to hold the rows
@@ -400,21 +409,21 @@ public class Database {
 	        allUsersData.add(singleUserRow);
 	    }
 
-	    return allUsersData;
-	}
-	
-	
-/*******
- * <p> Method: isUserAdmin </p>
- * 
- * <p> Description: Returns a boolean. True if the specified user is currently an admin. </p>
- * 
- * @param username to check
- * @return true if adminRole is TRUE, else false
- * 
- */		
-		
-	public boolean isUserAdmin(String userName) {
+		return allUsersData;
+		}
+    
+    
+	/*******
+	 * <p> Method: isUserAdmin </p>
+	 * 
+	 * <p> Description: Returns a boolean. True if the specified user is currently an admin. </p>
+	 * 
+	 * @param userName to check
+	 * @return true if adminRole is TRUE, else false
+	 * 
+	 */
+        
+		public boolean isUserAdmin(String userName) {
 	String query = "SELECT adminRole FROM userDB WHERE userName = ?";
 	try (PreparedStatement pstmt = connection.prepareStatement(query)) {
 		pstmt.setString(1, userName);
@@ -486,7 +495,7 @@ public class Database {
  *  <p> Method: List getUserList() </p>
  *  
  *  <P> Description: Generate a List of Strings, one for each user in the database,
- *  starting with "<Select User>" at the start of the list. </p>
+ *  starting with {@code <Select a User>} at the start of the list. </p>
  *  
  *  @return a list of userNames found in the database.
  */
@@ -789,6 +798,9 @@ public class Database {
 	/*******
 	 * <p> Method: getRoles(String username) </p>
 	 * * <p> Description: specific helper to format roles as a string.</p>
+	 * 
+	 * @param username the username whose assigned roles are requested
+	 * @return a comma-separated list of roles for the user, or an empty string if none
 	 */
 	public String getRoles(String username) {
 	    StringBuilder roles = new StringBuilder();
@@ -1546,8 +1558,15 @@ public class Database {
 	    String query = "INSERT INTO postsDB (authorUsername, threadName, title, content) "
 	            + "VALUES (?, ?, ?, ?)";
 	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	    	String normalizedThread = post.getThreadName();
+	    	if (normalizedThread == null || normalizedThread.trim().isEmpty()) {
+	    		normalizedThread = "General";
+	    	} else {
+	    		normalizedThread = normalizedThread.trim();
+	    	}
+
 	        pstmt.setString(1, post.getAuthorUsername());
-	        pstmt.setString(2, post.getThreadName());
+	        pstmt.setString(2, normalizedThread);
 	        pstmt.setString(3, post.getTitle());
 	        pstmt.setString(4, post.getContent());
 	        pstmt.executeUpdate();
@@ -1565,8 +1584,25 @@ public class Database {
 	 * @param reply the Reply object to insert
 	 */
 	public void createReply(Reply reply) {
+		String parentQuery = "SELECT isDeleted FROM postsDB WHERE id = ?";
 	    String query = "INSERT INTO repliesDB (postId, authorUsername, content) "
 	            + "VALUES (?, ?, ?)";
+	    try (PreparedStatement checkStmt = connection.prepareStatement(parentQuery)) {
+	    	checkStmt.setInt(1, reply.getPostId());
+	    	ResultSet parentRs = checkStmt.executeQuery();
+
+	    	if (!parentRs.next()) {
+	    		throw new IllegalArgumentException("Cannot create reply: parent post does not exist.");
+	    	}
+
+	    	if (parentRs.getBoolean("isDeleted")) {
+	    		throw new IllegalArgumentException("Cannot create reply: parent post is deleted.");
+	    	}
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	        return;
+	    }
+
 	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
 	        pstmt.setInt(1, reply.getPostId());
 	        pstmt.setString(2, reply.getAuthorUsername());
@@ -1694,6 +1730,14 @@ public class Database {
 	    }
 	    return 0;
 	}
+	/*******
+	 * <p> Method: markReplyRead(String username, int replyId) </p>
+	 * 
+	 * <p> Description: Marks a reply as read for a specific user by inserting or updating read status.</p>
+	 * 
+	 * @param username the username marking the reply as read
+	 * @param replyId the reply identifier to mark as read
+	 */
 	public void markReplyRead(String username, int replyId) {
 	    String query =
 	        "MERGE INTO readStatusDB (username, replyId, isRead) " +
@@ -1731,6 +1775,15 @@ public class Database {
 	    return false;
 	}
 
+	/*******
+	 * <p> Method: int getUnreadReplyCount(String username, int postId) </p>
+	 * 
+	 * <p> Description: Returns the count of unread replies for a given user on a specific post.</p>
+	 * 
+	 * @param username the username whose unread count is requested
+	 * @param postId the parent post identifier
+	 * @return the number of unread replies for this user and post
+	 */
 public int getUnreadReplyCount(String username, int postId) {
     String query =
         "SELECT COUNT(*) AS count " +
@@ -1786,8 +1839,14 @@ public int getUnreadReplyCount(String username, int postId) {
 	    return posts;
 	}
 
-/**********
- * Soft delete a post. Only the author may delete their own post.
+/*******
+ * <p> Method: boolean deleteOwnPost(int postId, String username) </p>
+ * 
+ * <p> Description: Soft deletes a post when requested by the post's author. </p>
+ * 
+ * @param postId the identifier of the post to delete
+ * @param username the username requesting the delete operation
+ * @return true if exactly one matching post was updated; false otherwise
  */
 public boolean deleteOwnPost(int postId, String username) {
     String sql =
@@ -1806,9 +1865,24 @@ public boolean deleteOwnPost(int postId, String username) {
 }
 
 /*******
- * Search posts by keyword and optional thread.
+ * <p> Method: List&lt;Post&gt; searchPosts(String keyword, String threadName) </p>
+ * 
+ * <p> Description: Searches post titles and content by keyword and optionally filters by thread. </p>
+ * 
+ * @param keyword the case-insensitive keyword to search in titles and content
+ * @param threadName optional thread filter; blank or null searches all threads
+ * @return a list of matching posts ordered by newest first
  */
 public List<Post> searchPosts(String keyword, String threadName) {
+	if (keyword == null) {
+		throw new IllegalArgumentException("Search keyword cannot be null.");
+	}
+
+	String trimmedKeyword = keyword.trim();
+	if (trimmedKeyword.isEmpty()) {
+		throw new IllegalArgumentException("Search keyword cannot be blank.");
+	}
+
     List<Post> posts = new ArrayList<>();
 
     StringBuilder sql = new StringBuilder(
@@ -1822,7 +1896,7 @@ public List<Post> searchPosts(String keyword, String threadName) {
     sql.append(" ORDER BY timestamp DESC");
 
     try (PreparedStatement pstmt = connection.prepareStatement(sql.toString())) {
-        String like = "%" + keyword.toLowerCase() + "%";
+		String like = "%" + trimmedKeyword.toLowerCase() + "%";
         pstmt.setString(1, like);
         pstmt.setString(2, like);
 

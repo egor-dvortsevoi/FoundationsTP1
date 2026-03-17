@@ -15,7 +15,6 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.CheckBox;
-import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.Pane;
 import javafx.scene.shape.Line;
@@ -111,6 +110,8 @@ public class ViewStudentHome {
 	protected static Button button_Quit = new Button("Quit");
 	protected static Button button_SwitchRole = new Button("Switch Role");
 
+	// This is the end of the GUI objects for the page.
+
 	// These attributes are used to configure the page and populate it with this user's information
 	private static ViewStudentHome theView;		// Used to determine if instantiation of the class
 												// is needed
@@ -132,22 +133,49 @@ public class ViewStudentHome {
 	
 	 */
 
+	/**********
+	 * <p> Method: displayStudentHome(Stage ps, User user) </p>
+	 *
+	 * <p> Description: This method is the single entry point from outside this package to cause
+	 * the Student Home page to be displayed.
+	 *
+	 * It first sets up every shared attributes so we don't have to pass parameters.
+	 *
+	 * It then checks to see if the page has been setup.  If not, it instantiates the class,
+	 * initializes all the static aspects of the GIUI widgets (e.g., location on the page, font,
+	 * size, and any methods to be performed).
+	 *
+	 * After the instantiation, the code then populates the elements that change based on the user
+	 * and the system's current state.  It then sets the Scene onto the stage, and makes it visible
+	 * to the user.
+	 *
+	 * @param ps specifies the JavaFX Stage to be used for this GUI and it's methods
+	 *
+	 * @param user specifies the User for this GUI and it's methods
+	 *
+	 */
 	public static void displayStudentHome(Stage ps, User user) {
-		
+
+		// Establish the references to the GUI and the current user
 		theStage = ps;
 		theUser = user;
-		
-		if (theView == null) theView = new ViewStudentHome();
-		
+
+		// If not yet established, populate the static aspects of the GUI
+		if (theView == null) theView = new ViewStudentHome();		// Instantiate singleton if needed
+
+		// Populate the dynamic aspects of the GUI with the data from the user and the current
+		// state of the system.
 		theDatabase.getUserAccountDetails(user.getUserName());
 		applicationMain.FoundationsMain.activeHomePage = theRole;
-		
+
+		// Refresh the user's roles from the database so the Switch Role button is accurate
 		theUser.setAdminRole(theDatabase.getCurrentAdminRole());
 		theUser.setStudentUser(theDatabase.getCurrentNewStudent());
 		theUser.setStaffUser(theDatabase.getCurrentNewStaff());
-		
+
 		label_UserDetails.setText("User: " + theUser.getUserName());
 
+		// Refresh the search thread filter and new post thread list
 		combo_SearchThread.getItems().clear();
 		combo_SearchThread.getItems().add("All");
 		combo_SearchThread.getItems().addAll(theDatabase.getAllThreadNames());
@@ -156,21 +184,38 @@ public class ViewStudentHome {
 		combo_NewPostThread.getItems().addAll(theDatabase.getAllThreadNames());
 		combo_NewPostThread.setValue("General");
 
-
+		// Refresh the posts list each time we display this page
 		ControllerStudentHome.refreshPostList();
-		
+
+		// Hide the new post form in case it was left visible
 		showNewPostForm(false);
+
+		// Show the Switch Role button only if the user has multiple roles
 		button_SwitchRole.setVisible(theUser.getNumRoles() > 1);
-				
+
+		// Set the title for the window, display the page, and wait for the user to do something
 		theStage.setTitle("CSE 360 Foundations: Student Home Page");
 		theStage.setScene(theViewStudentHomeScene);
 		theStage.show();
 	}
 
+	/**********
+	 * <p> Method: ViewStudentHome() </p>
+	 *
+	 * <p> Description: This method initializes all the elements of the graphical user interface.
+	 * This method determines the location, size, font, color, and change and event handlers for
+	 * each GUI object.</p>
+	 *
+	 * This is a singleton and is only performed once.  Subsequent uses fill in the changeable
+	 * fields using the displayRole2Home method.</p>
+	 *
+	 */
 	private ViewStudentHome() {
 
+		// Create the Pane for the list of widgets and the Scene for the window
 		theRootPane = new Pane();
-		theViewStudentHomeScene = new Scene(theRootPane, width, height);
+		theViewStudentHomeScene = new Scene(theRootPane, width, height);	// Create the scene
+
 		// ===== New Post form layout =====
 
 		label_NewPostTitle.setLayoutX(20);
@@ -201,7 +246,10 @@ public class ViewStudentHome {
 		button_CancelPost.setLayoutX(260);
 		button_CancelPost.setLayoutY(370);
 
-		
+
+		// Populate the window with the title and other common widgets and set their static state
+
+		// GUI Area 1
 		label_PageTitle.setText("Student Home Page");
 		setupLabelUI(label_PageTitle, "Arial", 28, width, Pos.CENTER, 0, 5);
 
@@ -219,6 +267,7 @@ public class ViewStudentHome {
 		// GUI Area 2 — Discussion Posts
 		setupLabelUI(label_Posts, "Arial", 20, 300, Pos.BASELINE_LEFT, 20, 105);
 
+		// Set up the TableView with sortable columns
 		col_Title.setCellValueFactory(data -> data.getValue().titleProperty());
 		col_Title.setPrefWidth(200);
 		col_Thread.setCellValueFactory(data -> data.getValue().threadProperty());
@@ -291,6 +340,19 @@ public class ViewStudentHome {
 		checkbox_UnreadOnly.setLayoutY(415);
 		checkbox_UnreadOnly.setOnAction((_) -> { ControllerStudentHome.refreshPostList(); });
 
+		// GUI Area 3
+		setupButtonUI(button_Logout, "Dialog", 18, 250, Pos.CENTER, 20, 540);
+		button_Logout.setOnAction((_) -> {ControllerStudentHome.performLogout(); });
+
+		setupButtonUI(button_Quit, "Dialog", 18, 250, Pos.CENTER, 300, 540);
+		button_Quit.setOnAction((_) -> {ControllerStudentHome.performQuit(); });
+
+		setupButtonUI(button_SwitchRole, "Dialog", 18, 180, Pos.CENTER, 580, 540);
+		button_SwitchRole.setOnAction((_) -> {ControllerStudentHome.performSwitchRole(); });
+
+		// This is the end of the GUI initialization code
+
+		// Place all of the widget items into the Root Pane's list of children
 		theRootPane.getChildren().addAll(
 			    label_PageTitle, label_UserDetails, button_UpdateThisUser, line_Separator1,
 			    label_Posts, tableView_Posts, checkbox_MyPostsOnly, checkbox_UnreadOnly,
@@ -304,18 +366,26 @@ public class ViewStudentHome {
 			    label_NewPostContent, text_NewPostContent,
 			    button_SubmitPost, button_CancelPost
 			);
-		
-		setupButtonUI(button_Logout, "Dialog", 18, 250, Pos.CENTER, 20, 540);
-		button_Logout.setOnAction((_) -> {ControllerStudentHome.performLogout(); });
-    
-		setupButtonUI(button_Quit, "Dialog", 18, 250, Pos.CENTER, 300, 540);
-		button_Quit.setOnAction((_) -> {ControllerStudentHome.performQuit(); });
-
-		setupButtonUI(button_SwitchRole, "Dialog", 18, 180, Pos.CENTER, 580, 540);
-		button_SwitchRole.setOnAction((_) -> {ControllerStudentHome.performSwitchRole(); });
 
 	}
 
+	/*-********************************************************************************************
+
+	Helper methods to reduce code length
+
+	 */
+
+	/**********
+	 * Private local method to initialize the standard fields for a label
+	 *
+	 * @param l		The Label object to be initialized
+	 * @param ff	The font to be used
+	 * @param f		The size of the font to be used
+	 * @param w		The width of the Label
+	 * @param p		The alignment (e.g. left, centered, or right)
+	 * @param x		The location from the left edge (x axis)
+	 * @param y		The location from the top (y axis)
+	 */
 	private static void setupLabelUI(Label l, String ff, double f, double w, Pos p, double x, double y){
 		l.setFont(Font.font(ff, f));
 		l.setMinWidth(w);
@@ -324,6 +394,17 @@ public class ViewStudentHome {
 		l.setLayoutY(y);		
 	}
 	
+	/**********
+	 * Private local method to initialize the standard fields for a button
+	 *
+	 * @param b		The Button object to be initialized
+	 * @param ff	The font to be used
+	 * @param f		The size of the font to be used
+	 * @param w		The width of the Button
+	 * @param p		The alignment (e.g. left, centered, or right)
+	 * @param x		The location from the left edge (x axis)
+	 * @param y		The location from the top (y axis)
+	 */
 	private static void setupButtonUI(Button b, String ff, double f, double w, Pos p, double x, double y){
 		b.setFont(Font.font(ff, f));
 		b.setMinWidth(w);
@@ -332,9 +413,13 @@ public class ViewStudentHome {
 		b.setLayoutY(y);		
 	}
 
+	/**********
+	 * Show or hide the new post form, toggling the post list visibility accordingly.
+	 */
 	protected static void showNewPostForm(boolean show) {
 	    showingNewPostForm = show;
 
+	    // Hide post list and buttons when showing the form
 	    label_Posts.setVisible(!show);
 	    tableView_Posts.setVisible(!show);
 	    checkbox_MyPostsOnly.setVisible(!show);
@@ -356,6 +441,9 @@ public class ViewStudentHome {
 	}
 
 
+	/**
+	 * Data model for a single row in the posts TableView.
+	 */
 	public static class PostRow {
 		private final SimpleStringProperty title;
 		private final SimpleStringProperty thread;
@@ -364,6 +452,16 @@ public class ViewStudentHome {
 		private final SimpleStringProperty date;
 		private final int postIndex;
 
+		/**
+		 * Creates a row model for one post in the table.
+		 * 
+		 * @param title post title
+		 * @param thread thread name
+		 * @param replies number of replies
+		 * @param unread number of unread replies
+		 * @param date display date
+		 * @param postIndex index mapping back to the source post list
+		 */
 		public PostRow(String title, String thread, int replies, int unread, String date, int postIndex) {
 			this.title = new SimpleStringProperty(title);
 			this.thread = new SimpleStringProperty(thread);
@@ -373,11 +471,41 @@ public class ViewStudentHome {
 			this.postIndex = postIndex;
 		}
 
+		/**
+		 * Gets the title property for this row.
+		 * 
+		 * @return title property
+		 */
 		public SimpleStringProperty titleProperty() { return title; }
+		/**
+		 * Gets the thread property for this row.
+		 * 
+		 * @return thread property
+		 */
 		public SimpleStringProperty threadProperty() { return thread; }
+		/**
+		 * Gets the replies-count property for this row.
+		 * 
+		 * @return replies property
+		 */
 		public SimpleIntegerProperty repliesProperty() { return replies; }
+		/**
+		 * Gets the unread-count property for this row.
+		 * 
+		 * @return unread property
+		 */
 		public SimpleIntegerProperty unreadProperty() { return unread; }
+		/**
+		 * Gets the formatted date property for this row.
+		 * 
+		 * @return date property
+		 */
 		public SimpleStringProperty dateProperty() { return date; }
+		/**
+		 * Gets the source post index associated with this row.
+		 * 
+		 * @return backing post index
+		 */
 		public int getPostIndex() { return postIndex; }
 	}
 }

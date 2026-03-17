@@ -16,5 +16,11 @@ package guiAddRemoveRoles;
  */
 
 public class ModelAddRemoveRoles {
+	/**********
+	 * <p> Method: ModelAddRemoveRoles() </p>
+	 * * <p> Description: Default constructor for the add/remove roles model. </p>
+	 */
+	public ModelAddRemoveRoles() {
+	}
 
 }

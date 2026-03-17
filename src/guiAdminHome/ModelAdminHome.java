@@ -16,5 +16,11 @@ package guiAdminHome;
  */
 
 public class ModelAdminHome {
+	/**********
+	 * <p> Method: ModelAdminHome() </p>
+	 * * <p> Description: Default constructor for the admin home model. </p>
+	 */
+	public ModelAdminHome() {
+	}
 
 }

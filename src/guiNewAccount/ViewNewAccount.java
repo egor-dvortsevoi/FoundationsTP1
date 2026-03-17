@@ -83,6 +83,7 @@ public class ViewNewAccount {
     											// and a role for this user
     protected static String emailAddress;		// Established here for use by the controller
     protected static String theRole;			// Established here for use by the controller
+	/** Shared scene instance populated for each page display. */
 	public static Scene theNewAccountScene = null;	// Access to the User Update page's GUI Widgets
 	
 

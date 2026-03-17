@@ -1,6 +1,8 @@
 package guiTools;
 
-
+/**
+ * Finite-state-machine based recognizer for validating email address format.
+ */
 public class EmailAddressRecognizer {
 	/**
 	 * <p> Title: FSM-translated EmailAddressRecognizer. </p>
@@ -44,8 +46,11 @@ public class EmailAddressRecognizer {
 	 * 
 	 */
 
+	/** Error text for the most recent validation. */
 	public static String emailAddressErrorMessage = "";	// The error message text
+	/** Input value from the most recent validation. */
 	public static String emailAddressInput = "";		// The input being processed
+	/** Index of the detected error in the most recent validation. */
 	public static int emailAddressIndexofError = -1;	// The index where the error was located
 	private static int state = 0;						// The current state value
 	private static int nextState = 0;					// The next state value
@@ -57,6 +62,12 @@ public class EmailAddressRecognizer {
 														// running
 	private static int localPartSize = 0;				// Track local part length
 	private static int domainPartSize = 0;				// Track domain part length
+
+	/**
+	 * Creates an email address recognizer.
+	 */
+	public EmailAddressRecognizer() {
+	}
 
 	/**********
 	 * This private method display the input line and then on a line under it displays an up arrow

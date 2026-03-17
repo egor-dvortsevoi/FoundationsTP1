@@ -38,6 +38,12 @@ public class Reply {
 
     /**
      * Full constructor used when reading from the database.
+        * 
+        * @param id the unique reply identifier
+        * @param postId the parent post identifier
+        * @param authorUsername the username of the reply author
+        * @param content the reply text content
+        * @param timestamp the reply creation timestamp
      */
     public Reply(int id, int postId, String authorUsername, String content, Timestamp timestamp) {
         this.id = id;
@@ -49,19 +55,69 @@ public class Reply {
 
     // ----- Getters and Setters -----
 
+    /**
+     * Gets the reply id.
+     * 
+     * @return the reply id
+     */
     public int getId() { return id; }
+    /**
+     * Sets the reply id.
+     * 
+     * @param id the reply id
+     */
     public void setId(int id) { this.id = id; }
 
+    /**
+     * Gets the parent post id.
+     * 
+     * @return the parent post id
+     */
     public int getPostId() { return postId; }
+    /**
+     * Sets the parent post id.
+     * 
+     * @param postId the parent post id
+     */
     public void setPostId(int postId) { this.postId = postId; }
 
+    /**
+     * Gets the reply author username.
+     * 
+     * @return the author username
+     */
     public String getAuthorUsername() { return authorUsername; }
+    /**
+     * Sets the reply author username.
+     * 
+     * @param authorUsername the author username
+     */
     public void setAuthorUsername(String authorUsername) { this.authorUsername = authorUsername; }
 
+    /**
+     * Gets the reply content.
+     * 
+     * @return the content
+     */
     public String getContent() { return content; }
+    /**
+     * Sets the reply content.
+     * 
+     * @param content the content
+     */
     public void setContent(String content) { this.content = content; }
 
+    /**
+     * Gets the reply timestamp.
+     * 
+     * @return the timestamp
+     */
     public Timestamp getTimestamp() { return timestamp; }
+    /**
+     * Sets the reply timestamp.
+     * 
+     * @param timestamp the timestamp
+     */
     public void setTimestamp(Timestamp timestamp) { this.timestamp = timestamp; }
 
     @Override

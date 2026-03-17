@@ -55,6 +55,10 @@ public class ViewPostDetail {
 
     /**
      * Entry point to display the post detail page.
+        * 
+        * @param ps the JavaFX stage used to render the page
+        * @param user the currently logged-in user
+        * @param post the post to display
      */
     public static void displayPostDetail(Stage ps, User user, Post post) {
         theStage = ps;

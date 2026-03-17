@@ -16,5 +16,11 @@ package guiFirstAdmin;
  */
 
 public class ModelFirstAdmin {
+	/**********
+	 * <p> Method: ModelFirstAdmin() </p>
+	 * * <p> Description: Default constructor for the first-admin model. </p>
+	 */
+	public ModelFirstAdmin() {
+	}
 
 }

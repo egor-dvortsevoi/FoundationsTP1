@@ -15,6 +15,10 @@ public class ControllerListUsers {
 	// Reference to the database
 	private static Database theDatabase = applicationMain.FoundationsMain.database;		
 
+	/**********
+	 * <p> Method: ControllerListUsers() </p>
+	 * * <p> Description: Default constructor for the list users controller. </p>
+	 */
 	public ControllerListUsers() {
 	}
 	

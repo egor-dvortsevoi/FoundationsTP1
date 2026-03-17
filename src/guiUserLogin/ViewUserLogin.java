@@ -62,6 +62,7 @@ public class ViewUserLogin {
 
 	private static Stage theStage;	
 	private static Pane theRootPane;
+	/** Shared scene instance populated for each page display. */
 	public static Scene theUserLoginScene = null;	
 
 
@@ -74,6 +75,11 @@ public class ViewUserLogin {
 
 	 *********************************************************************************************/
 
+	/**
+	 * Displays the user login page on the provided stage.
+	 * 
+	 * @param ps the JavaFX stage used to display the login page
+	 */
 	public static void displayUserLogin(Stage ps) {
 		
 		// Establish the references to the GUI. There is no current user yet.

@@ -1,6 +1,8 @@
 package guiTools;
 
-
+/**
+ * Finite-state-machine based recognizer for validating password strength and format.
+ */
 public class PasswordRecognizer {
 	/**
 	 * <p> Title: FSM-translated PasswordRecognizer. </p>
@@ -24,8 +26,11 @@ public class PasswordRecognizer {
 	 * 
 	 */
 
+	/** Error text for the most recent validation. */
 	public static String passwordErrorMessage = "";		// The error message text
+	/** Input value from the most recent validation. */
 	public static String passwordInput = "";				// The input being processed
+	/** Index of the detected error in the most recent validation. */
 	public static int passwordIndexofError = -1;			// The index of error location
 	private static int state = 0;						// The current state value
 	private static int nextState = 0;					// The next state value
@@ -41,6 +46,12 @@ public class PasswordRecognizer {
 	private static boolean hasUpperCase = false;
 	private static boolean hasLowerCase = false;
 	private static boolean hasDigit = false;
+
+	/**
+	 * Creates a password recognizer.
+	 */
+	public PasswordRecognizer() {
+	}
 
 	// Private method to display debugging data
 	private static void displayDebuggingInfo() {

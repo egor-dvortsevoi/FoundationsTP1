@@ -1,5 +1,8 @@
 package guiStaff;
 
+/**
+ * Model for the staff home page.
+ */
 public class ModelStaffHome {
 
 /*******
@@ -17,5 +20,12 @@ public class ModelStaffHome {
  * @version 1.01		2025-09-13 Updated JavaDoc description
  *  
  */
+
+	/**********
+	 * <p> Method: ModelStaffHome() </p>
+	 * * <p> Description: Default constructor for the staff home model. </p>
+	 */
+	public ModelStaffHome() {
+	}
 
 }

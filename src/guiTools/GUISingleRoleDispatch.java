@@ -64,13 +64,9 @@ public class GUISingleRoleDispatch {
 	 * <p> Description: This method is called after a GUI page has already been established and
 	 * it is being display with potentially new contents for the various GUI elements. </p>
 	 * 
-	 * @param ps specifies the JavaFX Stage to be used for this GUI and it's methods
+	 * @param ps specifies the JavaFX Stage to be used for this GUI and its methods
 	 * 
-	 * @param theRoot specifies the JavaFX Pane to be used for this GUI and it's methods
-	 * 
-	 * @param database specifies the Database to be used by this GUI and it's methods
-	 * 
-	 * @param user specifies the User for this GUI and it's methods
+	 * @param user specifies the User for this GUI and its methods
 	 * 
 	 */
 	public static void doSingleRoleDispatch(Stage ps, User user) {

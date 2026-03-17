@@ -6,6 +6,9 @@ import java.util.Optional;
 import database.Database;
 import entityClasses.Post;
 import entityClasses.Reply;
+import guiTools.PostContentRecognizer;
+import guiTools.PostTitleRecognizer;
+import guiTools.ReplyContentRecognizer;
 import javafx.scene.control.TextInputDialog;
 import java.time.format.DateTimeFormatter;
 
@@ -52,9 +55,6 @@ public class ControllerStudentHome {
 	private static final DateTimeFormatter TIMESTAMP_FMT =
 			DateTimeFormatter.ofPattern("MM-dd-yyyy HH:mm:ss");
 
-	/**********
-	 * Refresh the list of posts displayed on the Student Home page.
-	 */
 	/**********
 	 * Refresh the list of posts displayed on the Student Home page.
 	 */
@@ -115,14 +115,17 @@ public class ControllerStudentHome {
 			thread = "General";
 		}
 		String content = ViewStudentHome.text_NewPostContent.getText().trim();
-		
-		if (title.isEmpty()) {
-			ViewStudentHome.alertPostError.setContentText("Title cannot be empty.");
+
+		String titleValidation = PostTitleRecognizer.checkForValidPostTitle(title);
+		if (!titleValidation.isEmpty()) {
+			ViewStudentHome.alertPostError.setContentText(titleValidation);
 			ViewStudentHome.alertPostError.showAndWait();
 			return;
 		}
-		if (content.isEmpty()) {
-			ViewStudentHome.alertPostError.setContentText("Content cannot be empty.");
+
+		String contentValidation = PostContentRecognizer.checkForValidPostContent(content);
+		if (!contentValidation.isEmpty()) {
+			ViewStudentHome.alertPostError.setContentText(contentValidation);
 			ViewStudentHome.alertPostError.showAndWait();
 			return;
 		}
@@ -199,8 +202,10 @@ public class ControllerStudentHome {
 	 */
 	protected static void submitReply() {
 		String content = ViewPostDetail.text_ReplyContent.getText().trim();
-		if (content.isEmpty()) {
-			ViewStudentHome.alertPostError.setContentText("Reply cannot be empty.");
+
+		String replyValidation = ReplyContentRecognizer.checkForValidReplyContent(content);
+		if (!replyValidation.isEmpty()) {
+			ViewStudentHome.alertPostError.setContentText(replyValidation);
 			ViewStudentHome.alertPostError.showAndWait();
 			return;
 		}

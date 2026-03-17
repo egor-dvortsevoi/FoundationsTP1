@@ -90,6 +90,15 @@ public class ViewMultipleRoleDispatch {
 
 	 */
 
+	/**********
+	 * <p> Method: displayMultipleRoleDispatch(Stage ps, User user) </p>
+	 * 
+	 * <p> Description: Displays the multiple-role dispatch page and populates available roles
+	 * for the current user. </p>
+	 * 
+	 * @param ps the JavaFX stage used to show this page
+	 * @param user the currently logged-in user
+	 */
 	public static void displayMultipleRoleDispatch(Stage ps, User user) {
 		
 		// Establish the references to the GUI and the current user

@@ -15,5 +15,11 @@ package guiNewAccount;
  *  
  */
 public class ModelNewAccount {
+	/**********
+	 * <p> Method: ModelNewAccount() </p>
+	 * * <p> Description: Default constructor for the new-account model. </p>
+	 */
+	public ModelNewAccount() {
+	}
 
 }

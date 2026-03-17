@@ -17,3 +17,8 @@ build.fxbuild
 
 # Java-specific
 hs_err_pid*
+
+# JavaDoc output
+doc/
+javadocs/
+javadoc/

@@ -49,6 +49,16 @@ public class User {
      * @param userName specifies the account userName for this user
      * 
      * @param password specifies the account password for this user
+    * 
+    * @param fn specifies the first name for this user
+    * 
+    * @param mn specifies the middle name for this user
+    * 
+    * @param ln specifies the last name for this user
+    * 
+    * @param pfn specifies the preferred first name for this user
+    * 
+    * @param ea specifies the email address for this user
      * 
      * @param r1 specifies the the Admin attribute (TRUE or FALSE) for this user
      * 
@@ -198,12 +208,67 @@ public class User {
     // Gets the current value of the Student role attribute.
     public String getEmailAddress() { return emailAddress; }
 
+    /*****
+     * <p> Method: void setUserName(String s) </p>
+     * 
+     * <p> Description: Sets the username for this user. </p>
+     * 
+     * @param s the username value
+     */
     public void setUserName(String s) { userName = s; }
+
+    /*****
+     * <p> Method: void setPassword(String s) </p>
+     * 
+     * <p> Description: Sets the password for this user. </p>
+     * 
+     * @param s the password value
+     */
     public void setPassword(String s) { password = s; }
+
+    /*****
+     * <p> Method: void setFirstName(String s) </p>
+     * 
+     * <p> Description: Sets the first name for this user. </p>
+     * 
+     * @param s the first name value
+     */
     public void setFirstName(String s) { firstName = s; }
+
+    /*****
+     * <p> Method: void setMiddleName(String s) </p>
+     * 
+     * <p> Description: Sets the middle name for this user. </p>
+     * 
+     * @param s the middle name value
+     */
     public void setMiddleName(String s) { middleName = s; }
+
+    /*****
+     * <p> Method: void setLastName(String s) </p>
+     * 
+     * <p> Description: Sets the last name for this user. </p>
+     * 
+     * @param s the last name value
+     */
     public void setLastName(String s) { lastName = s; }
+
+    /*****
+     * <p> Method: void setPreferredFirstName(String s) </p>
+     * 
+     * <p> Description: Sets the preferred first name for this user. </p>
+     * 
+     * @param s the preferred first name value
+     */
     public void setPreferredFirstName(String s) { preferredFirstName = s; }
+
+    /*****
+     * <p> Method: void setEmailAddress(String s) </p>
+     * 
+     * <p> Description: Sets the email address for this user. </p>
+     * 
+     * @param s the email address value
+     */
     public void setEmailAddress(String s) { emailAddress = s; }
 
     

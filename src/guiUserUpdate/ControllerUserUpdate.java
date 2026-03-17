@@ -3,6 +3,9 @@ package guiUserUpdate;
 import entityClasses.User;
 import javafx.stage.Stage;
 
+/**
+ * Controller for the user profile update page.
+ */
 public class ControllerUserUpdate {
 	/*-********************************************************************************************
 
@@ -17,6 +20,8 @@ public class ControllerUserUpdate {
 	 * class. In this case, there is just one method, no constructors, and no attributes.</p>
 	 *
 	 */
+	public ControllerUserUpdate() {
+	}
 
 	/*-********************************************************************************************
 
