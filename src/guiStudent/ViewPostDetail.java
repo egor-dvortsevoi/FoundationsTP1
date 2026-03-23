@@ -8,6 +8,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
+import javafx.scene.control.TextField;
 import javafx.scene.control.TextArea;
 import javafx.scene.layout.Pane;
 import javafx.scene.text.Font;
@@ -31,6 +32,7 @@ public class ViewPostDetail {
     // GUI widgets
     protected static Label label_PageTitle = new Label("Post Detail");
     protected static Label label_PostTitle = new Label();
+    protected static TextField text_PostTitleEdit = new TextField();
     protected static Label label_PostMeta = new Label();
     protected static TextArea text_PostContent = new TextArea();
     protected static Label label_Replies = new Label("Replies");
@@ -43,6 +45,17 @@ public class ViewPostDetail {
             new CheckBox("Show Unread Only");
 
     protected static Button button_DeletePost = new Button("Delete Post");
+    protected static Button button_EditPost = new Button("Edit Post");
+    protected static Button button_EditReply = new Button("Edit Reply");
+    protected static Button button_DeleteReply = new Button("Delete Reply");
+    protected static Button button_CancelEdit = new Button("Cancel Edit");
+
+    protected static List<Reply> currentReplies = new java.util.ArrayList<>();
+    protected static Reply editingReply = null;
+        private static boolean postEditMode = false;
+    private static boolean replyEditMode = false;
+        private static final java.time.format.DateTimeFormatter TIMESTAMP_FMT =
+            java.time.format.DateTimeFormatter.ofPattern("MM-dd-yyyy HH:mm:ss");
     
     private static ViewPostDetail theView;
     private static Database theDatabase = applicationMain.FoundationsMain.database;
@@ -71,26 +84,22 @@ public class ViewPostDetail {
         button_DeletePost.setVisible(
         	    !deleted && thePost.getAuthorUsername().equals(theUser.getUserName())
         	);
+        button_EditPost.setVisible(
+            !deleted && thePost.getAuthorUsername().equals(theUser.getUserName())
+        );
         
         // Hide reply form for deleted posts
         label_ReplyLabel.setVisible(!deleted);
         text_ReplyContent.setVisible(!deleted);
         button_SubmitReply.setVisible(!deleted);
+        button_CancelEdit.setVisible(!deleted && (replyEditMode || postEditMode));
+        updateReplyActionButtonsVisibility();
         
         if (theView == null) theView = new ViewPostDetail();
 
-        // Populate the dynamic content — show [Deleted] for deleted posts
-        label_PostTitle.setText(deleted ? "[Deleted]" : post.getTitle());
-        String meta = "By: " + (deleted ? "[Deleted]" : post.getAuthorUsername());
-        if (post.getThreadName() != null && !post.getThreadName().isEmpty()) {
-            meta += "  |  Thread: " + post.getThreadName();
-        }
-        if (post.getTimestamp() != null) {
-            meta += "  |  " + post.getTimestamp().toLocalDateTime()
-                    .format(java.time.format.DateTimeFormatter.ofPattern("MM-dd-yyyy HH:mm:ss"));
-        }
-        label_PostMeta.setText(meta);
-        text_PostContent.setText(deleted ? "[This post has been deleted]" : post.getContent());
+        setPostEditMode(false);
+        setReplyEditMode(false, null);
+        applyPostToView(post);
         text_ReplyContent.setText("");
 
         // Reset filter to show all replies
@@ -109,6 +118,7 @@ public class ViewPostDetail {
      */
     protected static void refreshReplies() {
         listView_Replies.getItems().clear();
+        currentReplies.clear();
         boolean unreadOnly = checkbox_UnreadRepliesOnly.isSelected();
         List<Reply> replies = theDatabase.getRepliesForPost(thePost.getId());
         int displayCount = 0;
@@ -118,12 +128,115 @@ public class ViewPostDetail {
                 continue;
             }
             displayCount++;
+                currentReplies.add(r);
             String ts = r.getTimestamp().toLocalDateTime()
-                    .format(java.time.format.DateTimeFormatter.ofPattern("MM-dd-yyyy HH:mm:ss"));
-            String display = r.getAuthorUsername() + " (" + ts + "):\n" + r.getContent();
+                    .format(TIMESTAMP_FMT);
+            String display = r.getAuthorUsername() + " (" + ts + ")";
+            if (r.getLastEditedAt() != null) {
+                display += " | Last edit: " + r.getLastEditedAt().toLocalDateTime().format(TIMESTAMP_FMT);
+            }
+            display += ":\n" + r.getContent();
             listView_Replies.getItems().add(display);
         }
         label_Replies.setText("Replies (" + displayCount + " shown, " + replies.size() + " total)");
+        updateReplyActionButtonsVisibility();
+    }
+
+    /**
+     * Shows reply action buttons only when the currently selected reply belongs
+     * to the logged-in user.
+     */
+    private static void updateReplyActionButtonsVisibility() {
+        int selectedIdx = listView_Replies.getSelectionModel().getSelectedIndex();
+        boolean ownSelectedReply = false;
+        if (selectedIdx >= 0 && selectedIdx < currentReplies.size() && theUser != null) {
+            Reply selectedReply = currentReplies.get(selectedIdx);
+            ownSelectedReply = selectedReply.getAuthorUsername().equals(theUser.getUserName());
+        }
+
+        button_EditReply.setVisible(ownSelectedReply);
+        button_DeleteReply.setVisible(ownSelectedReply);
+    }
+
+    /**
+     * Applies post data to title/content/meta controls.
+     *
+     * @param post post to render
+     */
+    protected static void applyPostToView(Post post) {
+        boolean deleted = post.isDeleted();
+        String displayTitle = deleted ? "[Deleted]" : post.getTitle();
+        label_PostTitle.setText(displayTitle);
+        text_PostTitleEdit.setText(displayTitle);
+
+        String meta = "By: " + (deleted ? "[Deleted]" : post.getAuthorUsername());
+        if (post.getThreadName() != null && !post.getThreadName().isEmpty()) {
+            meta += "  |  Thread: " + post.getThreadName();
+        }
+        if (post.getTimestamp() != null) {
+            meta += "  |  " + post.getTimestamp().toLocalDateTime().format(TIMESTAMP_FMT);
+        }
+        if (post.getLastEditedAt() != null) {
+            meta += "  |  Last edit: " + post.getLastEditedAt().toLocalDateTime().format(TIMESTAMP_FMT);
+        }
+        label_PostMeta.setText(meta);
+
+        text_PostContent.setText(deleted ? "[This post has been deleted]" : post.getContent());
+    }
+
+    /**
+     * Toggles inline edit mode for the current post title/content.
+     *
+     * @param enabled true to enable inline editing
+     */
+    protected static void setPostEditMode(boolean enabled) {
+        postEditMode = enabled;
+        label_PostTitle.setVisible(!enabled);
+        text_PostTitleEdit.setVisible(enabled);
+        text_PostContent.setEditable(enabled);
+        text_PostContent.setStyle(enabled
+                ? "-fx-control-inner-background: white;"
+                : "-fx-control-inner-background: #f4f4f4;");
+        button_EditPost.setText(enabled ? "Save Post" : "Edit Post");
+        button_CancelEdit.setVisible(replyEditMode || postEditMode);
+    }
+
+    /**
+     * Returns whether the post detail page is currently in inline edit mode.
+     *
+     * @return true when editing is enabled
+     */
+    protected static boolean isPostEditMode() {
+        return postEditMode;
+    }
+
+    /**
+     * Toggles inline edit mode for reply content.
+     *
+     * @param enabled true to enable reply editing
+     * @param reply reply being edited, or null when exiting edit mode
+     */
+    protected static void setReplyEditMode(boolean enabled, Reply reply) {
+        replyEditMode = enabled;
+        editingReply = enabled ? reply : null;
+
+        label_ReplyLabel.setText(enabled ? "Edit your reply:" : "Your Reply:");
+        text_ReplyContent.setPromptText(enabled ? "Edit selected reply..." : "Write a reply...");
+        button_SubmitReply.setText(enabled ? "Save Reply" : "Submit Reply");
+        button_CancelEdit.setVisible(replyEditMode || postEditMode);
+
+        if (!enabled) {
+            text_ReplyContent.clear();
+        }
+    }
+
+    /**
+     * Returns whether reply inline edit mode is active.
+     *
+     * @return true when editing a selected reply
+     */
+    protected static boolean isReplyEditMode() {
+        return replyEditMode;
     }
 
     /**
@@ -138,6 +251,10 @@ public class ViewPostDetail {
 
         // Post title
         setupLabelUI(label_PostTitle, "Arial", 20, width - 40, Pos.BASELINE_LEFT, 20, 50);
+        text_PostTitleEdit.setLayoutX(20);
+        text_PostTitleEdit.setLayoutY(50);
+        text_PostTitleEdit.setPrefWidth(width - 40);
+        text_PostTitleEdit.setVisible(false);
 
         // Post metadata (author, thread, time)
         label_PostMeta.setFont(Font.font("Arial", 12));
@@ -168,6 +285,9 @@ public class ViewPostDetail {
         listView_Replies.setLayoutY(240);
         listView_Replies.setPrefWidth(width - 40);
         listView_Replies.setPrefHeight(160);
+        listView_Replies.getSelectionModel().selectedIndexProperty().addListener((_, __, ___) -> {
+            updateReplyActionButtonsVisibility();
+        });
 
         // Reply input
         setupLabelUI(label_ReplyLabel, "Arial", 14, 100, Pos.BASELINE_LEFT, 20, 410);
@@ -181,6 +301,10 @@ public class ViewPostDetail {
         // Submit reply button
         setupButtonUI(button_SubmitReply, "Dialog", 14, 130, Pos.CENTER, 20, 500);
         button_SubmitReply.setOnAction((_) -> { ControllerStudentHome.submitReply(); });
+
+        setupButtonUI(button_CancelEdit, "Dialog", 12, 130, Pos.CENTER, 20, 535);
+        button_CancelEdit.setVisible(false);
+        button_CancelEdit.setOnAction((_) -> { ControllerStudentHome.cancelCurrentEdit(); });
 
         // Back button
         setupButtonUI(button_Back, "Dialog", 14, 130, Pos.CENTER, 160, 500);
@@ -196,13 +320,31 @@ public class ViewPostDetail {
             ControllerStudentHome.deleteCurrentPost();
         });
 
+        setupButtonUI(button_EditPost, "Dialog", 14, 130, Pos.CENTER, 440, 500);
+        button_EditPost.setOnAction((_) -> {
+            ControllerStudentHome.editCurrentPost();
+        });
+
+        setupButtonUI(button_EditReply, "Dialog", 12, 130, Pos.CENTER, 580, 500);
+        button_EditReply.setVisible(false);
+        button_EditReply.setOnAction((_) -> {
+            ControllerStudentHome.editSelectedReply();
+        });
+
+        setupButtonUI(button_DeleteReply, "Dialog", 12, 130, Pos.CENTER, 580, 535);
+        button_DeleteReply.setVisible(false);
+        button_DeleteReply.setOnAction((_) -> {
+            ControllerStudentHome.deleteSelectedReply();
+        });
+
         
 
         theRootPane.getChildren().addAll(
-            label_PageTitle, label_PostTitle, label_PostMeta, text_PostContent,
+            label_PageTitle, label_PostTitle, text_PostTitleEdit, label_PostMeta, text_PostContent,
             label_Replies, listView_Replies, checkbox_UnreadRepliesOnly,
             label_ReplyLabel, text_ReplyContent,
-            button_SubmitReply, button_Back, button_DeletePost
+            button_SubmitReply, button_CancelEdit, button_Back, button_DeletePost,
+            button_EditPost, button_EditReply, button_DeleteReply
             
         );
     }

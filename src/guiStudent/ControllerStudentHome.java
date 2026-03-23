@@ -209,19 +209,175 @@ public class ControllerStudentHome {
 			ViewStudentHome.alertPostError.showAndWait();
 			return;
 		}
-		
+
+		if (ViewPostDetail.isReplyEditMode()) {
+			Reply editingReply = ViewPostDetail.editingReply;
+			if (editingReply == null) {
+				ViewStudentHome.alertPostError.setContentText("No reply selected for editing.");
+				ViewStudentHome.alertPostError.showAndWait();
+				return;
+			}
+
+			boolean updated = theDatabase.updateOwnReply(
+					editingReply.getId(),
+					ViewPostDetail.theUser.getUserName(),
+					content);
+
+			if (!updated) {
+				ViewStudentHome.alertPostError.setContentText("Reply update failed.");
+				ViewStudentHome.alertPostError.showAndWait();
+				return;
+			}
+
+			ViewPostDetail.setReplyEditMode(false, null);
+			ViewPostDetail.refreshReplies();
+			ControllerStudentHome.refreshPostList();
+			return;
+		}
+
 		Reply reply = new Reply(
 				ViewPostDetail.thePost.getId(),
 				ViewPostDetail.theUser.getUserName(),
 				content
 		);
 		theDatabase.createReply(reply);
-		
+
 		ViewPostDetail.text_ReplyContent.setText("");
 		ViewPostDetail.refreshReplies();
 		ControllerStudentHome.refreshPostList();
 
 
+	}
+
+	/**********
+	 * Edit the currently viewed post (author only).
+	 */
+	protected static void editCurrentPost() {
+		Post post = ViewPostDetail.thePost;
+		if (post == null) {
+			return;
+		}
+
+		if (post.isDeleted() || !post.getAuthorUsername().equals(ViewPostDetail.theUser.getUserName())) {
+			ViewStudentHome.alertPostError.setContentText("Only the post author can edit this post.");
+			ViewStudentHome.alertPostError.showAndWait();
+			return;
+		}
+
+		if (!ViewPostDetail.isPostEditMode()) {
+			ViewPostDetail.setPostEditMode(true);
+			ViewPostDetail.text_PostTitleEdit.setText(post.getTitle());
+			ViewPostDetail.text_PostContent.setText(post.getContent());
+			return;
+		}
+
+		String updatedTitle = ViewPostDetail.text_PostTitleEdit.getText().trim();
+		String updatedContent = ViewPostDetail.text_PostContent.getText().trim();
+
+		String titleValidation = PostTitleRecognizer.checkForValidPostTitle(updatedTitle);
+		if (!titleValidation.isEmpty()) {
+			ViewStudentHome.alertPostError.setContentText(titleValidation);
+			ViewStudentHome.alertPostError.showAndWait();
+			return;
+		}
+
+		String contentValidation = PostContentRecognizer.checkForValidPostContent(updatedContent);
+		if (!contentValidation.isEmpty()) {
+			ViewStudentHome.alertPostError.setContentText(contentValidation);
+			ViewStudentHome.alertPostError.showAndWait();
+			return;
+		}
+
+		boolean updated = theDatabase.updateOwnPost(
+				post.getId(),
+				ViewPostDetail.theUser.getUserName(),
+				updatedTitle,
+				post.getThreadName(),
+				updatedContent);
+
+		if (!updated) {
+			ViewStudentHome.alertPostError.setContentText("Post update failed.");
+			ViewStudentHome.alertPostError.showAndWait();
+			return;
+		}
+
+		Post refreshed = theDatabase.getPostById(post.getId());
+		if (refreshed != null) {
+			ViewPostDetail.thePost = refreshed;
+			ViewPostDetail.applyPostToView(refreshed);
+			ViewPostDetail.setPostEditMode(false);
+		}
+		refreshPostList();
+	}
+
+	/**********
+	 * Edit the currently selected reply (author only).
+	 */
+	protected static void editSelectedReply() {
+		int selectedIdx = ViewPostDetail.listView_Replies.getSelectionModel().getSelectedIndex();
+		if (selectedIdx < 0 || selectedIdx >= ViewPostDetail.currentReplies.size()) {
+			ViewStudentHome.alertPostError.setContentText("Please select a reply to edit.");
+			ViewStudentHome.alertPostError.showAndWait();
+			return;
+		}
+
+		Reply selectedReply = ViewPostDetail.currentReplies.get(selectedIdx);
+		if (!selectedReply.getAuthorUsername().equals(ViewPostDetail.theUser.getUserName())) {
+			ViewStudentHome.alertPostError.setContentText("Only the reply author can edit this reply.");
+			ViewStudentHome.alertPostError.showAndWait();
+			return;
+		}
+
+		ViewPostDetail.setReplyEditMode(true, selectedReply);
+		ViewPostDetail.text_ReplyContent.setText(selectedReply.getContent());
+	}
+
+	/**********
+	 * Cancels current inline edit mode (post and/or reply) and restores default state.
+	 */
+	protected static void cancelCurrentEdit() {
+		if (ViewPostDetail.isPostEditMode()) {
+			if (ViewPostDetail.thePost != null) {
+				ViewPostDetail.applyPostToView(ViewPostDetail.thePost);
+			}
+			ViewPostDetail.setPostEditMode(false);
+		}
+
+		if (ViewPostDetail.isReplyEditMode()) {
+			ViewPostDetail.setReplyEditMode(false, null);
+		}
+	}
+
+	/**********
+	 * Delete the currently selected reply (author only).
+	 */
+	protected static void deleteSelectedReply() {
+		int selectedIdx = ViewPostDetail.listView_Replies.getSelectionModel().getSelectedIndex();
+		if (selectedIdx < 0 || selectedIdx >= ViewPostDetail.currentReplies.size()) {
+			ViewStudentHome.alertPostError.setContentText("Please select a reply to delete.");
+			ViewStudentHome.alertPostError.showAndWait();
+			return;
+		}
+
+		Reply selectedReply = ViewPostDetail.currentReplies.get(selectedIdx);
+		if (!selectedReply.getAuthorUsername().equals(ViewPostDetail.theUser.getUserName())) {
+			ViewStudentHome.alertPostError.setContentText("Only the reply author can delete this reply.");
+			ViewStudentHome.alertPostError.showAndWait();
+			return;
+		}
+
+		boolean deleted = theDatabase.deleteOwnReply(
+				selectedReply.getId(),
+				ViewPostDetail.theUser.getUserName());
+
+		if (!deleted) {
+			ViewStudentHome.alertPostError.setContentText("Reply delete failed.");
+			ViewStudentHome.alertPostError.showAndWait();
+			return;
+		}
+
+		ViewPostDetail.refreshReplies();
+		refreshPostList();
 	}
 
 	/**********

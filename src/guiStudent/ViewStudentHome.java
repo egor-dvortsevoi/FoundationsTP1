@@ -303,7 +303,10 @@ public class ViewStudentHome {
 		text_Search.setPrefWidth(200);
 		text_Search.setPromptText("Search keywords");
 		text_Search.textProperty().addListener((obs, oldText, newText) -> {
-		    ControllerStudentHome.refreshPostList();
+			if (obs == null || (oldText != null && oldText.equals(newText))) {
+				return;
+			}
+			ControllerStudentHome.refreshPostList();
 		});
 
 

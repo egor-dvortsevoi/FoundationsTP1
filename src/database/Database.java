@@ -146,8 +146,16 @@ public class Database {
 	            + "title VARCHAR(255), "
 	            + "content CLOB, "
 	            + "timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
+	            + "lastEditedAt TIMESTAMP, "
 	            + "isDeleted BOOL DEFAULT FALSE)";
 	    statement.execute(postsTable);
+
+	    // Migration: add edit timestamp if it does not already exist
+	    try {
+	        statement.execute("ALTER TABLE postsDB ADD COLUMN IF NOT EXISTS lastEditedAt TIMESTAMP");
+	    } catch (SQLException e) {
+	        // Column may already exist — ignore
+	    }
 	    
 	    // Create the replies table
 	    String repliesTable = "CREATE TABLE IF NOT EXISTS repliesDB ("
@@ -156,8 +164,16 @@ public class Database {
 	            + "authorUsername VARCHAR(255), "
 	            + "content CLOB, "
 	            + "timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
+	            + "lastEditedAt TIMESTAMP, "
 	            + "FOREIGN KEY (postId) REFERENCES postsDB(id))";
 	    statement.execute(repliesTable);
+
+	    // Migration: add reply edit timestamp if it does not already exist
+	    try {
+	        statement.execute("ALTER TABLE repliesDB ADD COLUMN IF NOT EXISTS lastEditedAt TIMESTAMP");
+	    } catch (SQLException e) {
+	        // Column may already exist — ignore
+	    }
 
 		String readStatusTable = "CREATE TABLE IF NOT EXISTS readStatusDB ("
     			+ "username VARCHAR(255), "
@@ -1635,6 +1651,7 @@ public class Database {
 	                rs.getString("title"),
 	                rs.getString("content"),
 	                rs.getTimestamp("timestamp"),
+	                rs.getTimestamp("lastEditedAt"),
 	                rs.getBoolean("isDeleted")
 	            );
 	            posts.add(p);
@@ -1667,6 +1684,7 @@ public class Database {
 	                rs.getString("title"),
 	                rs.getString("content"),
 	                rs.getTimestamp("timestamp"),
+	                rs.getTimestamp("lastEditedAt"),
 	                rs.getBoolean("isDeleted")
 	            );
 	        }
@@ -1698,7 +1716,8 @@ public class Database {
 	                rs.getInt("postId"),
 	                rs.getString("authorUsername"),
 	                rs.getString("content"),
-	                rs.getTimestamp("timestamp")
+	                rs.getTimestamp("timestamp"),
+	                rs.getTimestamp("lastEditedAt")
 	            );
 	            replies.add(r);
 	        }
@@ -1829,6 +1848,7 @@ public int getUnreadReplyCount(String username, int postId) {
 	                rs.getString("title"),
 	                rs.getString("content"),
 	                rs.getTimestamp("timestamp"),
+	                rs.getTimestamp("lastEditedAt"),
 	                rs.getBoolean("isDeleted")
 	            );
 	            posts.add(p);
@@ -1862,6 +1882,104 @@ public boolean deleteOwnPost(int postId, String username) {
         e.printStackTrace();
     }
     return false;
+}
+
+/*******
+ * <p> Method: boolean updateOwnPost(int postId, String username, String title,
+ * String threadName, String content) </p>
+ *
+ * <p> Description: Updates a post when requested by the post's author and the
+ * post is not deleted. </p>
+ *
+ * @param postId the identifier of the post to update
+ * @param username the username requesting the update operation
+ * @param title the new post title
+ * @param threadName the new thread name (blank defaults to General)
+ * @param content the new post content
+ * @return true if exactly one matching post was updated; false otherwise
+ */
+public boolean updateOwnPost(int postId, String username, String title,
+		String threadName, String content) {
+	String normalizedThread = threadName;
+	if (normalizedThread == null || normalizedThread.trim().isEmpty()) {
+		normalizedThread = "General";
+	} else {
+		normalizedThread = normalizedThread.trim();
+	}
+
+	String sql =
+		"UPDATE postsDB " +
+		"SET title = ?, threadName = ?, content = ?, lastEditedAt = CURRENT_TIMESTAMP " +
+		"WHERE id = ? AND authorUsername = ? AND isDeleted = FALSE";
+
+	try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+		pstmt.setString(1, title);
+		pstmt.setString(2, normalizedThread);
+		pstmt.setString(3, content);
+		pstmt.setInt(4, postId);
+		pstmt.setString(5, username);
+		return pstmt.executeUpdate() == 1;
+	} catch (SQLException e) {
+		e.printStackTrace();
+	}
+	return false;
+}
+
+/*******
+ * <p> Method: boolean updateOwnReply(int replyId, String username, String content) </p>
+ *
+ * <p> Description: Updates a reply when requested by that reply's author and
+ * the parent post is not deleted.</p>
+ *
+ * @param replyId the identifier of the reply to update
+ * @param username the username requesting the update operation
+ * @param content the new reply content
+ * @return true if exactly one matching reply was updated; false otherwise
+ */
+public boolean updateOwnReply(int replyId, String username, String content) {
+	String sql =
+		"UPDATE repliesDB r " +
+		"SET r.content = ?, r.lastEditedAt = CURRENT_TIMESTAMP " +
+		"WHERE r.id = ? AND r.authorUsername = ? " +
+		"AND EXISTS (SELECT 1 FROM postsDB p WHERE p.id = r.postId AND p.isDeleted = FALSE)";
+
+	try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+		pstmt.setString(1, content);
+		pstmt.setInt(2, replyId);
+		pstmt.setString(3, username);
+		return pstmt.executeUpdate() == 1;
+	} catch (SQLException e) {
+		e.printStackTrace();
+	}
+	return false;
+}
+
+/*******
+ * <p> Method: boolean deleteOwnReply(int replyId, String username) </p>
+ *
+ * <p> Description: Deletes a reply when requested by that reply's author.
+ * Read-status rows tied to the reply are also removed.</p>
+ *
+ * @param replyId the identifier of the reply to delete
+ * @param username the username requesting the delete operation
+ * @return true if exactly one matching reply was deleted; false otherwise
+ */
+public boolean deleteOwnReply(int replyId, String username) {
+	String deleteReadStatus = "DELETE FROM readStatusDB WHERE replyId = ?";
+	String deleteReply = "DELETE FROM repliesDB WHERE id = ? AND authorUsername = ?";
+
+	try (PreparedStatement readStmt = connection.prepareStatement(deleteReadStatus);
+			PreparedStatement replyStmt = connection.prepareStatement(deleteReply)) {
+		readStmt.setInt(1, replyId);
+		readStmt.executeUpdate();
+
+		replyStmt.setInt(1, replyId);
+		replyStmt.setString(2, username);
+		return replyStmt.executeUpdate() == 1;
+	} catch (SQLException e) {
+		e.printStackTrace();
+	}
+	return false;
 }
 
 /*******
@@ -1913,6 +2031,7 @@ public List<Post> searchPosts(String keyword, String threadName) {
                 rs.getString("title"),
                 rs.getString("content"),
                 rs.getTimestamp("timestamp"),
+	            rs.getTimestamp("lastEditedAt"),
                 rs.getBoolean("isDeleted")
             ));
         }
