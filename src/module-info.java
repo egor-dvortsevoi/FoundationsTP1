@@ -2,7 +2,7 @@
  * Main module descriptor for the TP JavaFX application.
  */
 
-module TP1 {
+open module TP1 {
 	requires javafx.controls;
 	requires javafx.fxml;
 	requires java.sql;
