@@ -1,3 +1,6 @@
+/**
+ * 
+ */
 package tests;
 
 import database.Database;
@@ -9,40 +12,21 @@ import guiTools.ReplyContentRecognizer;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.*;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Automated test suite for student post and reply behavior.
- *
- * <p>This suite validates input-recognizer boundaries plus key database-backed
- * CRUD operations for posts and replies. Each test method names the mapped test
- * case id (for example, {@code tc10_*}) and verifies expected success/failure
- * outcomes with explicit assertions.
- *
- * <p>How to interpret results:
- * <ul>
- *   <li>Pass: the tested requirement behavior matches expected output or state.</li>
- *   <li>Fail: either validation rules, authorization rules, or CRUD persistence
- *   semantics do not match expected behavior.</li>
- * </ul>
+ * 
  */
-public class TestCases {
+class AutomatedTests {
 
-    private Database database;
+	private Database database;
     private String runToken;
-
-    /**
-     * Creates the TestCases suite instance.
-     *
-     * <p>The constructor is explicit so Javadoc includes constructor
-     * documentation and does not warn about an undocumented implicit default constructor.</p>
-     */
-    public TestCases() {
-        // Default constructor used by the test runner.
-    }
 
     /**
      * Creates a fresh database handle per test and assigns a unique token so

@@ -14,6 +14,7 @@ import java.sql.Statement;
 import entityClasses.Post;
 import entityClasses.Reply;
 import entityClasses.User;
+import logging.CentralizedSecurityLogger;
 
 /*******
  * <p> Title: Database Class. </p>
@@ -1351,7 +1352,15 @@ public class Database {
 			
 			// Can't remove the last admin
 			if(!newValue) { //removing admin
-				if(isUserAdmin(username) && getNumberOfAdmins() <= 1) return false;
+				if(isUserAdmin(username) && getNumberOfAdmins() <= 1) {
+					logAuthorizationDeny(
+						"updateUserRole",
+						username,
+						"userRole",
+						username + ":Admin",
+						"LAST_ADMIN_GUARD");
+					return false;
+				}
 			}
 			
 			String query = "UPDATE userDB SET adminRole = ? WHERE username = ?";
@@ -1556,6 +1565,68 @@ public class Database {
 		} catch(SQLException se){ 
 			se.printStackTrace(); 
 		} 
+	}
+
+	/**
+	 * Logs a normalized authorization-denial event through the centralized logger.
+	 *
+	 * @param operation operation name where denial occurred
+	 * @param actor actor username (or best-effort identity)
+	 * @param targetType target type (for example post/reply/userRole)
+	 * @param targetId target identifier value
+	 * @param reasonCode normalized deny reason code
+	 */
+	private void logAuthorizationDeny(String operation, String actor, String targetType,
+			String targetId, String reasonCode) {
+		CentralizedSecurityLogger.logAuthorizationDeny(
+			Database.class.getSimpleName(), operation, actor, targetType, targetId, reasonCode);
+	}
+
+	/**
+	 * Resolves why a post mutation was denied so tests can assert deterministic reason codes.
+	 *
+	 * @param postId post identifier
+	 * @param requesterUsername requester identity
+	 * @return normalized deny reason code
+	 */
+	private String resolvePostMutationDenyReason(int postId, String requesterUsername) {
+		String sql = "SELECT authorUsername, isDeleted FROM postsDB WHERE id = ?";
+		try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+			pstmt.setInt(1, postId);
+			ResultSet rs = pstmt.executeQuery();
+			if (!rs.next()) return "POST_NOT_FOUND";
+			if (rs.getBoolean("isDeleted")) return "POST_DELETED";
+			if (!requesterUsername.equals(rs.getString("authorUsername"))) return "NOT_OWNER";
+			return "DENY_UNKNOWN";
+		} catch (SQLException e) {
+			return "DENY_REASON_LOOKUP_FAILED";
+		}
+	}
+
+	/**
+	 * Resolves why a reply mutation was denied so tests can assert deterministic reason codes.
+	 *
+	 * @param replyId reply identifier
+	 * @param requesterUsername requester identity
+	 * @param includeParentCheck true when parent-post state should be considered
+	 * @return normalized deny reason code
+	 */
+	private String resolveReplyMutationDenyReason(int replyId, String requesterUsername,
+			boolean includeParentCheck) {
+		String sql =
+			"SELECT r.authorUsername, p.isDeleted " +
+			"FROM repliesDB r LEFT JOIN postsDB p ON p.id = r.postId " +
+			"WHERE r.id = ?";
+		try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+			pstmt.setInt(1, replyId);
+			ResultSet rs = pstmt.executeQuery();
+			if (!rs.next()) return "REPLY_NOT_FOUND";
+			if (!requesterUsername.equals(rs.getString("authorUsername"))) return "NOT_OWNER";
+			if (includeParentCheck && rs.getBoolean("isDeleted")) return "PARENT_POST_DELETED";
+			return "DENY_UNKNOWN";
+		} catch (SQLException e) {
+			return "DENY_REASON_LOOKUP_FAILED";
+		}
 	}
 
 
@@ -1877,7 +1948,16 @@ public boolean deleteOwnPost(int postId, String username) {
     try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
         pstmt.setInt(1, postId);
         pstmt.setString(2, username);
-        return pstmt.executeUpdate() == 1;
+		boolean deleted = pstmt.executeUpdate() == 1;
+		if (!deleted) {
+			logAuthorizationDeny(
+				"deleteOwnPost",
+				username,
+				"post",
+				String.valueOf(postId),
+				resolvePostMutationDenyReason(postId, username));
+		}
+		return deleted;
     } catch (SQLException e) {
         e.printStackTrace();
     }
@@ -1918,7 +1998,16 @@ public boolean updateOwnPost(int postId, String username, String title,
 		pstmt.setString(3, content);
 		pstmt.setInt(4, postId);
 		pstmt.setString(5, username);
-		return pstmt.executeUpdate() == 1;
+		boolean updated = pstmt.executeUpdate() == 1;
+		if (!updated) {
+			logAuthorizationDeny(
+				"updateOwnPost",
+				username,
+				"post",
+				String.valueOf(postId),
+				resolvePostMutationDenyReason(postId, username));
+		}
+		return updated;
 	} catch (SQLException e) {
 		e.printStackTrace();
 	}
@@ -1947,7 +2036,16 @@ public boolean updateOwnReply(int replyId, String username, String content) {
 		pstmt.setString(1, content);
 		pstmt.setInt(2, replyId);
 		pstmt.setString(3, username);
-		return pstmt.executeUpdate() == 1;
+		boolean updated = pstmt.executeUpdate() == 1;
+		if (!updated) {
+			logAuthorizationDeny(
+				"updateOwnReply",
+				username,
+				"reply",
+				String.valueOf(replyId),
+				resolveReplyMutationDenyReason(replyId, username, true));
+		}
+		return updated;
 	} catch (SQLException e) {
 		e.printStackTrace();
 	}
@@ -1967,6 +2065,7 @@ public boolean updateOwnReply(int replyId, String username, String content) {
 public boolean deleteOwnReply(int replyId, String username) {
 	String deleteReadStatus = "DELETE FROM readStatusDB WHERE replyId = ?";
 	String deleteReply = "DELETE FROM repliesDB WHERE id = ? AND authorUsername = ?";
+	String denyReason = resolveReplyMutationDenyReason(replyId, username, false);
 
 	try (PreparedStatement readStmt = connection.prepareStatement(deleteReadStatus);
 			PreparedStatement replyStmt = connection.prepareStatement(deleteReply)) {
@@ -1975,7 +2074,16 @@ public boolean deleteOwnReply(int replyId, String username) {
 
 		replyStmt.setInt(1, replyId);
 		replyStmt.setString(2, username);
-		return replyStmt.executeUpdate() == 1;
+		boolean deleted = replyStmt.executeUpdate() == 1;
+		if (!deleted) {
+			logAuthorizationDeny(
+				"deleteOwnReply",
+				username,
+				"reply",
+				String.valueOf(replyId),
+				denyReason);
+		}
+		return deleted;
 	} catch (SQLException e) {
 		e.printStackTrace();
 	}
