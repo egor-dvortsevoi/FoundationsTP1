@@ -14,6 +14,8 @@ import java.sql.Statement;
 import entityClasses.Post;
 import entityClasses.Reply;
 import entityClasses.User;
+import entityClasses.Request;
+
 
 /*******
  * <p> Title: Database Class. </p>
@@ -193,6 +195,23 @@ public class Database {
 
 		// Seed the "General" thread if it does not already exist
 		seedGeneralThread();
+		
+		
+		
+		
+		// Create the admin requests table
+		String adminRequestsTable = "CREATE TABLE IF NOT EXISTS adminRequestsDB ("
+		        + "id INT AUTO_INCREMENT PRIMARY KEY, "
+		        + "staffUsername VARCHAR(255), "
+		        + "title VARCHAR(255), "
+		        + "content CLOB, "
+		        + "status VARCHAR(20), "
+		        + "timestampCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
+		        + "parentRequestID INT)";
+		statement.execute(adminRequestsTable);
+
+		
+		
 	}
 
 
@@ -2041,5 +2060,173 @@ public List<Post> searchPosts(String keyword, String threadName) {
 
     return posts;
 }
+
+
+
+// ========================================================================================
+// Admin Request Methods
+// ========================================================================================
+
+
+
+/*******
+ * <p> Method: createRequest </p>
+ *
+ * <p> Description: Inserts a new admin request into the database. </p>
+ *
+ * @param request the Request object containing the new request data
+ * @return true if exactly one row was inserted; false otherwise
+ */
+public boolean createRequest(Request request) {
+    String sql = "INSERT INTO adminRequestsDB "
+            + "(staffUsername, title, content, status, parentRequestID) "
+            + "VALUES (?, ?, ?, ?, ?)";
+
+    try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+        pstmt.setString(1, request.getStaffUsername());
+        pstmt.setString(2, request.getTitle());
+        pstmt.setString(3, request.getContent());
+        pstmt.setString(4, request.getStatus());
+        
+        if (request.getParentRequestID() == null) {
+            pstmt.setNull(5, java.sql.Types.INTEGER);
+        } else {
+            pstmt.setInt(5, request.getParentRequestID());
+        }
+
+        return pstmt.executeUpdate() == 1;
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return false;
+}
+
+
+
+
+/*******
+ * <p> Method: getRequestsByStaff </p>
+ *
+ * <p> Description: Retrieves all admin requests created by a specific staff user,
+ * sorted by newest first. </p>
+ *
+ * @param username the staff member's username
+ * @return a list of Request objects belonging to that staff member
+ */
+public List<Request> getRequestsByStaff(String username) {
+    List<Request> requests = new ArrayList<>();
+
+    String sql = "SELECT * FROM adminRequestsDB "
+               + "WHERE staffUsername = ? "
+               + "ORDER BY timestampCreated DESC";
+
+    try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+        pstmt.setString(1, username);
+
+        ResultSet rs = pstmt.executeQuery();
+        while (rs.next()) {
+            requests.add(new Request(
+                rs.getInt("id"),
+                rs.getString("staffUsername"),
+                rs.getString("title"),
+                rs.getString("content"),
+                rs.getString("status"),
+                rs.getTimestamp("timestampCreated"),
+                rs.getObject("parentRequestID") == null
+                    ? null
+                    : rs.getInt("parentRequestID")
+            ));
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+
+    return requests;
+}
+
+
+
+
+/*******
+ * <p> Method: getAllRequests </p>
+ *
+ * <p> Description: Retrieves all admin requests in the system,
+ * sorted by newest first. Used by Admin to view all requests. </p>
+ *
+ * @return a list of all Request objects in the database
+ */
+public List<Request> getAllRequests() {
+    List<Request> requests = new ArrayList<>();
+
+    String sql = "SELECT * FROM adminRequestsDB "
+               + "ORDER BY timestampCreated DESC";
+
+    try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+
+        ResultSet rs = pstmt.executeQuery();
+        while (rs.next()) {
+            requests.add(new Request(
+                rs.getInt("id"),
+                rs.getString("staffUsername"),
+                rs.getString("title"),
+                rs.getString("content"),
+                rs.getString("status"),
+                rs.getTimestamp("timestampCreated"),
+                rs.getObject("parentRequestID") == null
+                    ? null
+                    : rs.getInt("parentRequestID")
+            ));
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+
+    return requests;
+}
+
+
+
+
+/*******
+ * <p> Method: closeRequest </p>
+ *
+ * <p> Description: Sets the status of a request to "CLOSED". </p>
+ *
+ * @param requestID the ID of the request to close
+ * @return true if exactly one row was updated; false otherwise
+ */
+public boolean closeRequest(int requestID) {
+    String sql = "UPDATE adminRequestsDB SET status = 'CLOSED' WHERE id = ?";
+
+    try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+        pstmt.setInt(1, requestID);
+        return pstmt.executeUpdate() == 1;
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+
+    return false;
+}
+
+
+
+
+
+/*******
+ * <p> Method: reopenRequest </p>
+ *
+ * <p> Description: Reopens a request by creating a new request linked to the
+ * original via parentRequestID. The new request should have status "OPEN". </p>
+ *
+ * @param newRequest the new Request object representing the reopened request
+ * @return true if the new request was successfully inserted; false otherwise
+ */
+public boolean reopenRequest(Request newRequest) {
+    // Reopening is just creating a new request with parentRequestID set
+    return createRequest(newRequest);
+}
+
+
+
 
 }

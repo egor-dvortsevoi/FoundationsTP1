@@ -12,6 +12,7 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.control.ChoiceDialog;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
+import entityClasses.Request;
 
 /*******
  * <p> Title: GUIAdminHomePage Class. </p>
@@ -297,6 +298,52 @@ public class ControllerAdminHome {
 		}
 		return false;
 	}
+	
+	
+	
+	
+	
+	
+	// ========================================================================================
+	// Admin Request Ticketing Actions
+	// ========================================================================================
+
+	/*******
+	 * <p> Method: getAllRequests </p>
+	 *
+	 * <p> Description: Retrieves all admin requests from the Model. </p>
+	 */
+	protected static List<Request> getAllRequests() {
+	    return ModelAdminRequests.getAllRequests();
+	}
+
+	/*******
+	 * <p> Method: closeRequest </p>
+	 *
+	 * <p> Description: Sends the close request action to the Model. </p>
+	 *
+	 * @param requestID the ID of the request to close
+	 */
+	protected static void closeRequest(int requestID) {
+	    ModelAdminRequests.closeRequest(requestID);
+	}
+
+	
+	/**********
+	 * <p> Method: performViewRequests() </p>
+	 * 
+	 * <p> Description: Navigates to the Admin Requests page. </p>
+	 */
+	protected static void performViewRequests() {
+	    guiAdminRequests.ViewAdminRequests.displayAdminRequests(
+	        ViewAdminHome.theStage,
+	        ViewAdminHome.theUser
+	    );
+	}
+
+	
+	
+	
 	
 	/**********
 	 * <p> 
