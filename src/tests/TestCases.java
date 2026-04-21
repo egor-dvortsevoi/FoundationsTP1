@@ -662,4 +662,118 @@ public class TestCases {
         }
         return builder.toString();
     }
+    /**
+     * TC-16: creating a post with null title should throw the same validation error
+     * as any title that is too short after normalization.
+     *
+     * <p>Boundary value intent: null input is normalized and rejected safely.
+     */
+    @Test
+    void tc16_postCreateNullTitle_expectedMessage() {
+        IllegalArgumentException ex = Assertions.assertThrows(IllegalArgumentException.class,
+                () -> new Post("student_01", "General", null, "1234567890 valid content").create(database));
+
+        Assertions.assertEquals("Post title must be between 5 and 120 characters.", ex.getMessage());
+    }
+
+    /**
+     * TC-17: creating a post with blank content should throw the expected validation error.
+     *
+     * <p>Boundary value intent: blank post content must not be accepted.
+     */
+    @Test
+    void tc17_postCreateBlankContent_expectedMessage() {
+        IllegalArgumentException ex = Assertions.assertThrows(IllegalArgumentException.class,
+                () -> new Post("student_01", "General", runToken + " TC17 Title", "   ").create(database));
+
+        Assertions.assertEquals("Post content must be between 10 and 2000 characters.", ex.getMessage());
+    }
+
+    /**
+     * TC-18: creating a reply with null content should throw the expected validation error.
+     *
+     * <p>Boundary value intent: null reply content is normalized and rejected safely.
+     */
+    @Test
+    void tc18_replyCreateNullContent_expectedMessage() {
+        String uniqueTitle = runToken + " TC18 Title";
+        database.createPost(new Post("student_01", "General", uniqueTitle, "1234567890 valid content"));
+
+        Post created = findPostByExactTitle(uniqueTitle);
+        Assertions.assertNotNull(created);
+
+        IllegalArgumentException ex = Assertions.assertThrows(IllegalArgumentException.class,
+                () -> new Reply(created.getId(), "student_02", null).create(database));
+
+        Assertions.assertEquals("Reply content must be between 2 and 1500 characters.", ex.getMessage());
+    }
+
+    /**
+     * TC-19: another user cannot update someone else's post.
+     *
+     * <p>Coverage intent: exercises the authorization-failure branch of post update logic.
+     */
+    @Test
+    void tc19_updateOtherUsersPost_fails() {
+        String uniqueTitle = runToken + " TC19 Original";
+        database.createPost(new Post("student_01", "General", uniqueTitle, "1234567890 original content"));
+
+        Post created = findPostByExactTitle(uniqueTitle);
+        Assertions.assertNotNull(created);
+
+        boolean updated = database.updateOwnPost(
+                created.getId(),
+                "student_02",
+                runToken + " TC19 Updated",
+                "Homework",
+                "1234567890 updated content");
+
+        Assertions.assertFalse(updated);
+
+        Post refreshed = database.getPostById(created.getId());
+        Assertions.assertNotNull(refreshed);
+        Assertions.assertEquals(uniqueTitle, refreshed.getTitle());
+        Assertions.assertEquals("General", refreshed.getThreadName());
+    }
+
+    /**
+     * TC-20: another user cannot delete someone else's reply.
+     *
+     * <p>Coverage intent: exercises the authorization-failure branch of reply deletion logic.
+     */
+    @Test
+    void tc20_deleteOtherUsersReply_fails() {
+        String uniqueTitle = runToken + " TC20 Title";
+        database.createPost(new Post("student_01", "General", uniqueTitle, "1234567890 valid content"));
+
+        Post created = findPostByExactTitle(uniqueTitle);
+        Assertions.assertNotNull(created);
+
+        database.createReply(new Reply(created.getId(), "student_02", "valid reply content"));
+        Reply reply = findReplyByPostAndAuthor(created.getId(), "student_02");
+        Assertions.assertNotNull(reply);
+
+        boolean deleted = database.deleteOwnReply(reply.getId(), "student_01");
+        Assertions.assertFalse(deleted);
+
+        List<Reply> replies = database.getRepliesForPost(created.getId());
+        Assertions.assertEquals(1, replies.size());
+    }
+
+    /**
+     * Finds a reply for the specified post and author.
+     *
+     * @param postId target post id
+     * @param authorUsername target reply author
+     * @return matching reply or null when no match exists
+     */
+    private Reply findReplyByPostAndAuthor(int postId, String authorUsername) {
+        List<Reply> replies = database.getRepliesForPost(postId);
+        for (Reply reply : replies) {
+            if (reply.getPostId() == postId && authorUsername.equals(reply.getAuthorUsername())) {
+                return reply;
+            }
+        }
+        return null;
+    }
 }

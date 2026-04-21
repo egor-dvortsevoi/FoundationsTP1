@@ -14,6 +14,7 @@ import java.sql.Statement;
 import entityClasses.Post;
 import entityClasses.Reply;
 import entityClasses.User;
+import entityClasses.PrivateFeedback;
 
 /*******
  * <p> Title: Database Class. </p>
@@ -174,6 +175,16 @@ public class Database {
 	    } catch (SQLException e) {
 	        // Column may already exist — ignore
 	    }
+	 // Create the private feedback table
+	    String privateFeedbackTable = "CREATE TABLE IF NOT EXISTS privateFeedbackDB ("
+	            + "id INT AUTO_INCREMENT PRIMARY KEY, "
+	            + "postId INT, "
+	            + "senderUsername VARCHAR(255), "
+	            + "recipientUsername VARCHAR(255), "
+	            + "message CLOB, "
+	            + "timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
+	            + "FOREIGN KEY (postId) REFERENCES postsDB(id))";
+	    statement.execute(privateFeedbackTable);
 
 		String readStatusTable = "CREATE TABLE IF NOT EXISTS readStatusDB ("
     			+ "username VARCHAR(255), "
@@ -1628,7 +1639,64 @@ public class Database {
 	        e.printStackTrace();
 	    }
 	}
+	/*******
+	 * <p> Method: void createPrivateFeedback(PrivateFeedback feedback) </p>
+	 * 
+	 * <p> Description: Inserts a new private feedback entry into the privateFeedbackDB table.</p>
+	 * 
+	 * @param feedback the PrivateFeedback object to insert
+	 */
+	public void createPrivateFeedback(PrivateFeedback feedback) {
+	    String query = "INSERT INTO privateFeedbackDB (postId, senderUsername, recipientUsername, message) VALUES (?, ?, ?, ?)";
 
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setInt(1, feedback.getPostId());
+	        pstmt.setString(2, feedback.getSenderUsername());
+	        pstmt.setString(3, feedback.getRecipientUsername());
+	        pstmt.setString(4, feedback.getMessage());
+	        pstmt.executeUpdate();
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	}
+	
+	/*******
+	 * <p> Method: List&lt;PrivateFeedback&gt; getFeedbackForRecipient(String recipientUsername) </p>
+	 * 
+	 * <p> Description: Retrieves all private feedback messages for a specific recipient ordered by timestamp descending.</p>
+	 * 
+	 * @param recipientUsername the username of the recipient
+	 * @return a list of PrivateFeedback objects
+	 */
+	public List<PrivateFeedback> getFeedbackForRecipient(String recipientUsername) {
+	    List<PrivateFeedback> feedbackList = new ArrayList<>();
+
+	    String query = "SELECT * FROM privateFeedbackDB WHERE recipientUsername = ? ORDER BY timestamp DESC";
+
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        pstmt.setString(1, recipientUsername);
+	        ResultSet rs = pstmt.executeQuery();
+
+	        while (rs.next()) {
+	            feedbackList.add(new PrivateFeedback(
+	                    rs.getInt("id"),
+	                    rs.getInt("postId"),
+	                    rs.getString("senderUsername"),
+	                    rs.getString("recipientUsername"),
+	                    rs.getString("message"),
+	                    rs.getTimestamp("timestamp")
+	            ));
+	        }
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+
+	    return feedbackList;
+	}
+	
+	
+	
+	
 
 	/*******
 	 * <p> Method: List&lt;Post&gt; getAllPosts() </p>
