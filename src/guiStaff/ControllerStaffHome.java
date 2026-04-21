@@ -1,6 +1,12 @@
 package guiStaff;
 
 import entityClasses.Request;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
+import guiStaff.DiscussionAnalyticsPrototype;
+import entityClasses.Post;
+import entityClasses.Reply;
+import java.util.ArrayList;
 import java.util.List;
 
 /*******
@@ -70,10 +76,10 @@ public class ControllerStaffHome {
      * <p> Description: This method navigates the user back to the Multiple Role Dispatch page
      * so they can select a different role to play.</p>
      */
-    protected static void performSwitchRole() {
+    /*protected static void performSwitchRole() {
         guiMultipleRoleDispatch.ViewMultipleRoleDispatch.displayMultipleRoleDispatch(
                 ViewStaffHome.theStage, ViewStaffHome.theUser);
-    }
+    }*/
     
     /**********
      * <p> Method: performQuit() </p>
@@ -83,9 +89,9 @@ public class ControllerStaffHome {
      * restarted.</p>
      * 
      */ 
-    protected static void performQuit() {
+    /*protected static void performQuit() {
         System.exit(0);
-    }
+    }*/
     
     
     
@@ -178,4 +184,119 @@ public class ControllerStaffHome {
         );
     }
 
+
+	/**********
+	 * <p> Method: performSwitchRole() </p>
+	 * 
+	 * <p> Description: This method navigates the user back to the Multiple Role Dispatch page
+	 * so they can select a different role to play.</p>
+	 */
+	protected static void performSwitchRole() {
+		guiMultipleRoleDispatch.ViewMultipleRoleDispatch.displayMultipleRoleDispatch(
+				ViewStaffHome.theStage, ViewStaffHome.theUser);
+	}
+	
+	/**********
+	 * <p> Method: performSendPrivateFeedback() </p>
+	 * 
+	 * <p> Description: This method collects the feedback input from the Staff Home page
+	 * and stores a private feedback entry in the database. </p>
+	 * 
+	 */
+	protected static void performSendPrivateFeedback() {
+		try {
+			String postIdText = ViewStaffHome.text_PostId.getText().trim();
+			String recipient = ViewStaffHome.text_RecipientUsername.getText().trim();
+			String message = ViewStaffHome.text_FeedbackMessage.getText().trim();
+
+			if (postIdText.isEmpty() || recipient.isEmpty() || message.isEmpty()) {
+				Alert alert = new Alert(Alert.AlertType.ERROR);
+				alert.setTitle("*** ERROR ***");
+				alert.setHeaderText("Missing Feedback Information");
+				alert.setContentText("Please enter a post id, recipient username, and feedback message.");
+				alert.showAndWait();
+				return;
+			}
+
+			int postId = Integer.parseInt(postIdText);
+
+			entityClasses.PrivateFeedback feedback =
+					new entityClasses.PrivateFeedback(postId, ViewStaffHome.theUser.getUserName(), recipient, message);
+
+			applicationMain.FoundationsMain.database.createPrivateFeedback(feedback);
+
+			Alert alert = new Alert(Alert.AlertType.INFORMATION);
+			alert.setTitle("Success");
+			alert.setHeaderText("Private Feedback Saved");
+			alert.setContentText("The private feedback was successfully sent.");
+			alert.showAndWait();
+
+			ViewStaffHome.getInstance().text_PostId.clear();
+			ViewStaffHome.getInstance().text_RecipientUsername.clear();
+			ViewStaffHome.getInstance().text_FeedbackMessage.clear();
+
+		} catch (NumberFormatException e) {
+			Alert alert = new Alert(Alert.AlertType.ERROR);
+			alert.setTitle("*** ERROR ***");
+			alert.setHeaderText("Invalid Post ID");
+			alert.setContentText("Post ID must be a valid integer.");
+			alert.showAndWait();
+		}
+	}
+	
+	/**********
+	 * <p> Method: performEvaluateStudent() </p>
+	 * 
+	 * <p> Description: This method evaluates whether the specified student has replied
+	 * to at least three different students and displays the result on the Staff Home page. </p>
+	 * 
+	 */
+	protected static void performEvaluateStudent() {
+		String studentUsername = ViewStaffHome.getInstance().getStudentField().getText().trim();
+
+		if (studentUsername.isEmpty()) {
+			Alert alert = new Alert(AlertType.ERROR);
+			alert.setTitle("*** ERROR ***");
+			alert.setHeaderText("Missing Student Username");
+			alert.setContentText("Please enter a student username.");
+			alert.showAndWait();
+			return;
+		}
+
+		DiscussionAnalyticsPrototype analytics = new DiscussionAnalyticsPrototype();
+
+		List<Post> posts = applicationMain.FoundationsMain.database.getAllPosts();
+		List<Reply> allReplies = new ArrayList<>();
+
+		for (Post post : posts) {
+			allReplies.addAll(applicationMain.FoundationsMain.database.getRepliesForPost(post.getId()));
+		}
+
+		boolean result = analytics.hasRepliedToAtLeastThreeDifferentStudents(
+				studentUsername, posts, allReplies);
+
+		int distinctCount = analytics.countDistinctStudentsRepliedTo(
+				studentUsername, posts, allReplies);
+
+		if (result) {
+			ViewStaffHome.getInstance().getAnalyticsResultLabel().setText(
+					"Requirement met: replied to " + distinctCount + " different students.");
+		} else {
+			ViewStaffHome.getInstance().getAnalyticsResultLabel().setText(
+					"Requirement not met: replied to only " + distinctCount + " different students.");
+		}
+	}
+	
+	/**********
+	 * <p> Method: performQuit() </p>
+	 * 
+	 * <p> Description: This method terminates the execution of the program.  It leaves the
+	 * database in a state where the normal login page will be displayed when the application is
+	 * restarted.</p>
+	 * 
+	 */	
+	protected static void performQuit() {
+		System.exit(0);
+	}
+	
 }
