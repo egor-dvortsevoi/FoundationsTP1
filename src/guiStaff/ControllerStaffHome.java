@@ -1,11 +1,15 @@
 package guiStaff;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Alert.AlertType;
-import guiStaff.DiscussionAnalyticsPrototype;
-import entityClasses.Post;
-import entityClasses.Reply;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.StringJoiner;
+
+import entityClasses.Post;
+import entityClasses.Reply;
+
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.TextInputDialog;
 
 /*******
  * <p> Title: ControllerstaffHome Class. </p>
@@ -28,6 +32,9 @@ import java.util.List;
  */
 
 public class ControllerStaffHome {
+
+	// Model reference for staff-specific data operations
+	private static final ModelStaffHome theModel = new ModelStaffHome();
 	
 	/*-*******************************************************************************************
 
@@ -180,5 +187,224 @@ public class ControllerStaffHome {
 	 */	
 	protected static void performQuit() {
 		System.exit(0);
+	}
+
+	/**********
+	 * <p> Method: refreshThreadInventory() </p>
+	 *
+	 * <p> Description: Reloads the staff thread-management table from the database
+	 * inventory view.</p>
+	 */
+	protected static void refreshThreadInventory() {
+		ViewStaffHome.tableView_Threads.getItems().clear();
+		ArrayList<ArrayList<String>> rows = theModel.getThreadInventory();
+
+		for (ArrayList<String> row : rows) {
+			if (row.size() < 5) {
+				continue;
+			}
+			ViewStaffHome.tableView_Threads.getItems().add(
+				new ViewStaffHome.ThreadRow(
+					row.get(0),
+					row.get(1),
+					row.get(2),
+					row.get(3),
+					Integer.parseInt(row.get(4))
+				)
+			);
+		}
+	}
+
+	/**********
+	 * <p> Method: createThread() </p>
+	 *
+	 * <p> Description: Prompts staff for a thread name and creates the thread when
+	 * validation succeeds.</p>
+	 */
+	protected static void createThread() {
+		TextInputDialog dialog = new TextInputDialog();
+		dialog.setTitle("Create Thread");
+		dialog.setHeaderText("Create Discussion Thread");
+		dialog.setContentText("Thread name:");
+
+		Optional<String> result = dialog.showAndWait();
+		if (result.isEmpty()) {
+			return;
+		}
+
+		String threadName = result.get().trim();
+		if (threadName.isEmpty()) {
+			ViewStaffHome.showError("Thread name cannot be empty.");
+			return;
+		}
+
+		boolean created = theModel.createThread(threadName, ViewStaffHome.theUser.getUserName());
+		if (!created) {
+			ViewStaffHome.showError("Thread creation failed. The name may already exist.");
+			return;
+		}
+
+		refreshThreadInventory();
+		ViewStaffHome.showInfo("Thread created successfully.");
+	}
+
+	/**********
+	 * <p> Method: renameSelectedThread() </p>
+	 *
+	 * <p> Description: Renames the currently selected active thread after prompting
+	 * for the new thread name.</p>
+	 */
+	protected static void renameSelectedThread() {
+		ViewStaffHome.ThreadRow selected =
+				ViewStaffHome.tableView_Threads.getSelectionModel().getSelectedItem();
+		if (selected == null) {
+			ViewStaffHome.showError("Please select a thread to rename.");
+			return;
+		}
+
+		if ("true".equalsIgnoreCase(selected.getArchived())) {
+			ViewStaffHome.showError("Archived threads cannot be renamed.");
+			return;
+		}
+
+		TextInputDialog dialog = new TextInputDialog(selected.getThreadName());
+		dialog.setTitle("Rename Thread");
+		dialog.setHeaderText("Rename Discussion Thread");
+		dialog.setContentText("New thread name:");
+
+		Optional<String> result = dialog.showAndWait();
+		if (result.isEmpty()) {
+			return;
+		}
+
+		String newName = result.get().trim();
+		if (newName.isEmpty()) {
+			ViewStaffHome.showError("New thread name cannot be empty.");
+			return;
+		}
+
+		if (newName.equals(selected.getThreadName())) {
+			ViewStaffHome.showError("The new thread name must be different.");
+			return;
+		}
+
+		boolean renamed = theModel.renameThread(selected.getThreadName(), newName);
+		if (!renamed) {
+			ViewStaffHome.showError("Rename failed. The target name may already exist.");
+			return;
+		}
+
+		refreshThreadInventory();
+		ViewStaffHome.showInfo("Thread renamed successfully.");
+	}
+
+	/**********
+	 * <p> Method: deleteOrArchiveSelectedThread() </p>
+	 *
+	 * <p> Description: Deletes an empty thread or archives a non-empty thread based
+	 * on the configured database policy.</p>
+	 */
+	protected static void deleteOrArchiveSelectedThread() {
+		ViewStaffHome.ThreadRow selected =
+				ViewStaffHome.tableView_Threads.getSelectionModel().getSelectedItem();
+		if (selected == null) {
+			ViewStaffHome.showError("Please select a thread to delete or archive.");
+			return;
+		}
+
+		if ("true".equalsIgnoreCase(selected.getArchived())) {
+			ViewStaffHome.showError("This thread is already archived.");
+			return;
+		}
+
+		String threadName = selected.getThreadName();
+		boolean success = theModel.deleteOrArchiveThread(threadName);
+		if (!success) {
+			ViewStaffHome.showError("Delete/archive request was denied for this thread.");
+			return;
+		}
+
+		boolean archived = theModel.isThreadArchived(threadName);
+		refreshThreadInventory();
+		if (archived) {
+			ViewStaffHome.showInfo("Thread had existing posts and was archived.");
+		} else {
+			ViewStaffHome.showInfo("Thread deleted successfully.");
+		}
+	}
+
+	/**********
+	 * <p> Method: createAdminRequest() </p>
+	 *
+	 * <p> Description: Prompts staff for request title and details, then creates a
+	 * new admin request in OPEN state.</p>
+	 */
+	protected static void createAdminRequest() {
+		TextInputDialog titleDialog = new TextInputDialog();
+		titleDialog.setTitle("New Admin Request");
+		titleDialog.setHeaderText("Create Admin Request");
+		titleDialog.setContentText("Request title:");
+
+		Optional<String> titleResult = titleDialog.showAndWait();
+		if (titleResult.isEmpty()) {
+			return;
+		}
+
+		String title = titleResult.get().trim();
+		if (title.isEmpty()) {
+			ViewStaffHome.showError("Request title cannot be empty.");
+			return;
+		}
+
+		TextInputDialog descriptionDialog = new TextInputDialog();
+		descriptionDialog.setTitle("New Admin Request");
+		descriptionDialog.setHeaderText("Describe Requested Admin Action");
+		descriptionDialog.setContentText("Request description:");
+
+		Optional<String> descriptionResult = descriptionDialog.showAndWait();
+		if (descriptionResult.isEmpty()) {
+			return;
+		}
+
+		String description = descriptionResult.get().trim();
+		if (description.isEmpty()) {
+			ViewStaffHome.showError("Request description cannot be empty.");
+			return;
+		}
+
+		int requestId = theModel.createAdminRequest(
+				ViewStaffHome.theUser.getUserName(), title, description);
+		if (requestId < 0) {
+			ViewStaffHome.showError("Unable to create admin request.");
+			return;
+		}
+
+		ViewStaffHome.showInfo("Admin request created with id #" + requestId + ".");
+	}
+
+	/**********
+	 * <p> Method: viewMyAdminRequests() </p>
+	 *
+	 * <p> Description: Displays a summarized list of admin requests created by the
+	 * current staff user.</p>
+	 */
+	protected static void viewMyAdminRequests() {
+		ArrayList<String> summaries =
+				theModel.getAdminRequestSummariesForRequester(ViewStaffHome.theUser.getUserName());
+		if (summaries.isEmpty()) {
+			ViewStaffHome.showInfo("No admin requests have been submitted yet.");
+			return;
+		}
+
+		StringJoiner joiner = new StringJoiner("\n");
+		int shown = Math.min(12, summaries.size());
+		for (int i = 0; i < shown; i++) {
+			joiner.add(summaries.get(i));
+		}
+		if (summaries.size() > shown) {
+			joiner.add("... and " + (summaries.size() - shown) + " more");
+		}
+
+		ViewStaffHome.showInfo(joiner.toString());
 	}
 }

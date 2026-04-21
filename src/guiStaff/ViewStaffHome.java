@@ -1,9 +1,15 @@
 package guiStaff;
 
+import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.Pane;
 import javafx.scene.shape.Line;
 import javafx.scene.text.Font;
@@ -55,6 +61,26 @@ public class ViewStaffHome {
 	protected static Label label_PageTitle = new Label();
 	protected static Label label_UserDetails = new Label();
 	protected static Button button_UpdateThisUser = new Button("Account Update");
+
+	// GUI ARea 2: This is a stub, so there are no widgets here.  For an actual role page, this are
+	// would contain the widgets needed for the user to play the assigned role.
+	protected static Label label_ThreadSection = new Label("Thread Management");
+	protected static TableView<ThreadRow> tableView_Threads = new TableView<>();
+	protected static TableColumn<ThreadRow, String> col_ThreadName = new TableColumn<>("Thread");
+	protected static TableColumn<ThreadRow, String> col_CreatedBy = new TableColumn<>("Created By");
+	protected static TableColumn<ThreadRow, String> col_CreatedAt = new TableColumn<>("Created At");
+	protected static TableColumn<ThreadRow, String> col_Archived = new TableColumn<>("Archived");
+	protected static TableColumn<ThreadRow, Number> col_PostCount = new TableColumn<>("Posts");
+	protected static Button button_CreateThread = new Button("Create Thread");
+	protected static Button button_RenameThread = new Button("Rename Thread");
+	protected static Button button_DeleteArchiveThread = new Button("Delete/Archive");
+	protected static Button button_RefreshThreads = new Button("Refresh");
+	protected static Label label_ThreadPolicy =
+			new Label("Policy: non-empty threads are archived; empty threads are deleted.");
+	protected static Button button_NewAdminRequest = new Button("New Admin Request");
+	protected static Button button_ViewMyRequests = new Button("My Requests");
+	protected static Alert alertInfo = new Alert(AlertType.INFORMATION);
+	protected static Alert alertError = new Alert(AlertType.INFORMATION);
 
 	// This is a separator and it is used to partition the GUI for various tasks
 	protected static Line line_Separator1 = new Line(20, 95, width - 20, 95);
@@ -169,6 +195,9 @@ public class ViewStaffHome {
 		// Show the Switch Role button only if the user has multiple roles
 		button_SwitchRole.setVisible(theUser.getNumRoles() > 1);
 
+		// Refresh thread data each time this page is displayed
+		ControllerStaffHome.refreshThreadInventory();
+
 		// Set the title for the window, display the page, and wait for the Admin to do
 		// something
 		theStage.setTitle("CSE 360 Foundations: Staff Home Page");
@@ -209,6 +238,15 @@ public class ViewStaffHome {
 
 		label_UserDetails.setText("User: " + theUser.getUserName());
 		setupLabelUI(label_UserDetails, "Arial", 20, width, Pos.BASELINE_LEFT, 20, 55);
+
+		// Thread/admin quick actions in the top-right corner.
+		setupLabelUI(label_ThreadSection, "Arial", 16, 280, Pos.BASELINE_LEFT, 430, 95);
+		setupButtonUI(button_CreateThread, "Dialog", 13, 120, Pos.CENTER, 430, 120);
+		button_CreateThread.setOnAction((_) -> { ControllerStaffHome.createThread(); });
+		setupButtonUI(button_NewAdminRequest, "Dialog", 13, 170, Pos.CENTER, 560, 120);
+		button_NewAdminRequest.setOnAction((_) -> { ControllerStaffHome.createAdminRequest(); });
+		setupButtonUI(button_ViewMyRequests, "Dialog", 13, 170, Pos.CENTER, 560, 155);
+		button_ViewMyRequests.setOnAction((_) -> { ControllerStaffHome.viewMyAdminRequests(); });
 
 		setupButtonUI(button_UpdateThisUser, "Dialog", 18, 170, Pos.CENTER, 610, 45);
 		button_UpdateThisUser.setOnAction((_) -> {
@@ -281,6 +319,7 @@ public class ViewStaffHome {
 		// Place all of the widget items into the Root Pane's list of children
 		theRootPane.getChildren().addAll(
 				label_PageTitle, label_UserDetails, button_UpdateThisUser, line_Separator1,
+				label_ThreadSection, button_CreateThread, button_NewAdminRequest, button_ViewMyRequests,
 				label_FeedbackSection, label_PostId, text_PostId,
 				label_Recipient, text_RecipientUsername,
 				label_Message, text_FeedbackMessage, button_SendFeedback,
@@ -288,6 +327,35 @@ public class ViewStaffHome {
 				label_AnalyticsSection, label_StudentUsername, text_StudentUsername,
 				button_EvaluateStudent, label_AnalyticsResult,
 				line_Separator4, button_Logout, button_Quit, button_SwitchRole);
+	}
+
+
+	/**********
+	 * <p> Method: showInfo(String message) </p>
+	 *
+	 * <p> Description: Displays an informational dialog to the staff user.</p>
+	 *
+	 * @param message the message content to display
+	 */
+	protected static void showInfo(String message) {
+		alertInfo.setTitle("Staff Home");
+		alertInfo.setHeaderText("Operation Completed");
+		alertInfo.setContentText(message);
+		alertInfo.showAndWait();
+	}
+
+	/**********
+	 * <p> Method: showError(String message) </p>
+	 *
+	 * <p> Description: Displays an error dialog to the staff user.</p>
+	 *
+	 * @param message the message content to display
+	 */
+	protected static void showError(String message) {
+		alertError.setTitle("Staff Home");
+		alertError.setHeaderText("Operation Failed");
+		alertError.setContentText(message);
+		alertError.showAndWait();
 	}
 
 	/*-********************************************************************************************
@@ -393,5 +461,46 @@ public class ViewStaffHome {
 
 	public static ViewStaffHome getInstance() {
 		return theView;
+	}
+
+	/**
+	 * Row model for displaying thread inventory metadata in the staff thread table.
+	 */
+	public static class ThreadRow {
+		private final SimpleStringProperty threadName;
+		private final SimpleStringProperty createdBy;
+		private final SimpleStringProperty createdAt;
+		private final SimpleStringProperty archived;
+		private final SimpleIntegerProperty postCount;
+
+		/**
+		 * Creates a table row representation of one thread inventory entry.
+		 *
+		 * @param threadName thread name
+		 * @param createdBy creator username
+		 * @param createdAt creation timestamp text
+		 * @param archived archive flag text
+		 * @param postCount number of posts in the thread
+		 */
+		public ThreadRow(String threadName, String createdBy, String createdAt,
+				String archived, int postCount) {
+			this.threadName = new SimpleStringProperty(threadName);
+			this.createdBy = new SimpleStringProperty(createdBy == null ? "" : createdBy);
+			this.createdAt = new SimpleStringProperty(createdAt == null ? "" : createdAt);
+			this.archived = new SimpleStringProperty(archived == null ? "false" : archived);
+			this.postCount = new SimpleIntegerProperty(postCount);
+		}
+
+		public String getThreadName() { return threadName.get(); }
+		public String getCreatedBy() { return createdBy.get(); }
+		public String getCreatedAt() { return createdAt.get(); }
+		public String getArchived() { return archived.get(); }
+		public int getPostCount() { return postCount.get(); }
+
+		public SimpleStringProperty threadNameProperty() { return threadName; }
+		public SimpleStringProperty createdByProperty() { return createdBy; }
+		public SimpleStringProperty createdAtProperty() { return createdAt; }
+		public SimpleStringProperty archivedProperty() { return archived; }
+		public SimpleIntegerProperty postCountProperty() { return postCount; }
 	}
 }

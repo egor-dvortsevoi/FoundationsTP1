@@ -14,6 +14,10 @@ import java.sql.Statement;
 import entityClasses.Post;
 import entityClasses.Reply;
 import entityClasses.User;
+import entityClasses.AdminRequest;
+import entityClasses.ContentFlag;
+import entityClasses.Evaluation;
+import entityClasses.EvaluationParameter;
 import entityClasses.PrivateFeedback;
 import logging.CentralizedSecurityLogger;
 
@@ -176,17 +180,6 @@ public class Database {
 	    } catch (SQLException e) {
 	        // Column may already exist — ignore
 	    }
-	 // Create the private feedback table
-	    String privateFeedbackTable = "CREATE TABLE IF NOT EXISTS privateFeedbackDB ("
-	            + "id INT AUTO_INCREMENT PRIMARY KEY, "
-	            + "postId INT, "
-	            + "senderUsername VARCHAR(255), "
-	            + "recipientUsername VARCHAR(255), "
-	            + "message CLOB, "
-	            + "timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
-	            + "FOREIGN KEY (postId) REFERENCES postsDB(id))";
-	    statement.execute(privateFeedbackTable);
-
 		String readStatusTable = "CREATE TABLE IF NOT EXISTS readStatusDB ("
     			+ "username VARCHAR(255), "
     			+ "replyId INT, "
@@ -200,8 +193,93 @@ public class Database {
 				+ "id INT AUTO_INCREMENT PRIMARY KEY, "
 				+ "threadName VARCHAR(255) UNIQUE, "
 				+ "createdBy VARCHAR(255), "
-				+ "createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP)";
+				+ "createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
+				+ "isArchived BOOL DEFAULT FALSE, "
+				+ "archivedAt TIMESTAMP)";
 		statement.execute(threadsTable);
+
+		// Migration: add archival metadata to threads if it does not already exist
+		try {
+			statement.execute("ALTER TABLE threadsDB ADD COLUMN IF NOT EXISTS isArchived BOOL DEFAULT FALSE");
+		} catch (SQLException e) {
+			// Column may already exist - ignore
+		}
+
+		try {
+			statement.execute("ALTER TABLE threadsDB ADD COLUMN IF NOT EXISTS archivedAt TIMESTAMP");
+		} catch (SQLException e) {
+			// Column may already exist - ignore
+		}
+
+		// Create the private feedback table
+		String privateFeedbackTable = "CREATE TABLE IF NOT EXISTS privateFeedbackDB ("
+				+ "id INT AUTO_INCREMENT PRIMARY KEY, "
+				+ "targetType VARCHAR(20), "
+				+ "targetId INT, "
+				+ "staffUsername VARCHAR(255), "
+				+ "studentUsername VARCHAR(255), "
+				+ "feedback CLOB, "
+				+ "createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
+				+ "updatedAt TIMESTAMP, "
+				+ "isArchived BOOL DEFAULT FALSE)";
+		statement.execute(privateFeedbackTable);
+
+		// Create the content flags table
+		String contentFlagsTable = "CREATE TABLE IF NOT EXISTS contentFlagsDB ("
+				+ "id INT AUTO_INCREMENT PRIMARY KEY, "
+				+ "contentType VARCHAR(20), "
+				+ "contentId INT, "
+				+ "flaggedBy VARCHAR(255), "
+				+ "reasonCode VARCHAR(80), "
+				+ "details CLOB, "
+				+ "status VARCHAR(30) DEFAULT 'OPEN', "
+				+ "createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
+				+ "resolvedAt TIMESTAMP, "
+				+ "resolvedBy VARCHAR(255), "
+				+ "resolutionNote CLOB)";
+		statement.execute(contentFlagsTable);
+
+		// Create the evaluation parameters table
+		String evaluationParametersTable = "CREATE TABLE IF NOT EXISTS evaluationParametersDB ("
+				+ "id INT AUTO_INCREMENT PRIMARY KEY, "
+				+ "name VARCHAR(255) UNIQUE, "
+				+ "description CLOB, "
+				+ "maxPoints INT, "
+				+ "isActive BOOL DEFAULT TRUE, "
+				+ "createdBy VARCHAR(255), "
+				+ "createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
+				+ "updatedAt TIMESTAMP)";
+		statement.execute(evaluationParametersTable);
+
+		// Create the evaluations table
+		String evaluationsTable = "CREATE TABLE IF NOT EXISTS evaluationsDB ("
+				+ "id INT AUTO_INCREMENT PRIMARY KEY, "
+				+ "postId INT, "
+				+ "evaluatorUsername VARCHAR(255), "
+				+ "studentUsername VARCHAR(255), "
+				+ "parameterScoresJson CLOB, "
+				+ "totalScore DOUBLE, "
+				+ "feedback CLOB, "
+				+ "createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
+				+ "updatedAt TIMESTAMP, "
+				+ "FOREIGN KEY (postId) REFERENCES postsDB(id))";
+		statement.execute(evaluationsTable);
+
+		// Create the admin requests table
+		String adminRequestsTable = "CREATE TABLE IF NOT EXISTS adminRequestsDB ("
+				+ "id INT AUTO_INCREMENT PRIMARY KEY, "
+				+ "requesterUsername VARCHAR(255), "
+				+ "title VARCHAR(255), "
+				+ "description CLOB, "
+				+ "status VARCHAR(30) DEFAULT 'OPEN', "
+				+ "assigneeUsername VARCHAR(255), "
+				+ "actionNotes CLOB, "
+				+ "originalRequestId INT, "
+				+ "createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
+				+ "updatedAt TIMESTAMP, "
+				+ "closedAt TIMESTAMP, "
+				+ "closedBy VARCHAR(255))";
+		statement.execute(adminRequestsTable);
 
 		// Seed the "General" thread if it does not already exist
 		seedGeneralThread();
@@ -270,7 +348,7 @@ public class Database {
 	 */
 	public List<String> getAllThreadNames() {
 		List<String> threads = new ArrayList<>();
-		String query = "SELECT threadName FROM threadsDB ORDER BY " +
+		String query = "SELECT threadName FROM threadsDB WHERE isArchived = FALSE ORDER BY " +
 				"CASE WHEN threadName = 'General' THEN 0 ELSE 1 END, threadName ASC";
 		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
 			ResultSet rs = pstmt.executeQuery();
@@ -316,7 +394,13 @@ public class Database {
 	 */
 	public boolean deleteThread(String threadName) {
 		if ("General".equals(threadName)) return false; // Cannot delete the General thread
-		String query = "DELETE FROM threadsDB WHERE threadName = ?";
+
+		int postCount = getThreadPostCount(threadName);
+		if (postCount > 0) {
+			return archiveThread(threadName);
+		}
+
+		String query = "DELETE FROM threadsDB WHERE threadName = ? AND isArchived = FALSE";
 		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
 			pstmt.setString(1, threadName);
 			int rows = pstmt.executeUpdate();
@@ -341,7 +425,8 @@ public class Database {
 		if ("General".equals(oldName)) return false; // Cannot rename the General thread
 		try {
 			// Rename the thread
-			String updateThread = "UPDATE threadsDB SET threadName = ? WHERE threadName = ?";
+			String updateThread =
+					"UPDATE threadsDB SET threadName = ? WHERE threadName = ? AND isArchived = FALSE";
 			try (PreparedStatement pstmt = connection.prepareStatement(updateThread)) {
 				pstmt.setString(1, newName);
 				pstmt.setString(2, oldName);
@@ -360,6 +445,111 @@ public class Database {
 			e.printStackTrace();
 			return false;
 		}
+	}
+
+	/*******
+	 * <p> Method: boolean updateThread(String oldName, String newName) </p>
+	 *
+	 * <p> Description: Compatibility wrapper for thread updates. Delegates to
+	 * renameThread.</p>
+	 *
+	 * @param oldName the current thread name
+	 * @param newName the new thread name
+	 * @return true if rename succeeds
+	 */
+	public boolean updateThread(String oldName, String newName) {
+		return renameThread(oldName, newName);
+	}
+
+	/*******
+	 * <p> Method: boolean archiveThread(String threadName) </p>
+	 *
+	 * <p> Description: Archives a thread so it is hidden from normal thread pickers
+	 * while preserving discussion history.</p>
+	 *
+	 * @param threadName the thread to archive
+	 * @return true if the thread was archived
+	 */
+	public boolean archiveThread(String threadName) {
+		if ("General".equals(threadName)) return false;
+		String query =
+				"UPDATE threadsDB SET isArchived = TRUE, archivedAt = CURRENT_TIMESTAMP " +
+				"WHERE threadName = ? AND isArchived = FALSE";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			pstmt.setString(1, threadName);
+			return pstmt.executeUpdate() > 0;
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	/*******
+	 * <p> Method: List&lt;String&gt; getAllThreadNamesIncludingArchived() </p>
+	 *
+	 * <p> Description: Returns all thread names, including archived threads.</p>
+	 *
+	 * @return list of thread names
+	 */
+	public List<String> getAllThreadNamesIncludingArchived() {
+		List<String> threads = new ArrayList<>();
+		String query = "SELECT threadName FROM threadsDB ORDER BY " +
+				"CASE WHEN threadName = 'General' THEN 0 ELSE 1 END, threadName ASC";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			ResultSet rs = pstmt.executeQuery();
+			while (rs.next()) {
+				threads.add(rs.getString("threadName"));
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return threads;
+	}
+
+	/*******
+	 * <p> Method: ArrayList&lt;ArrayList&lt;String&gt;&gt; getThreadInventory() </p>
+	 *
+	 * <p> Description: Provides thread metadata for staff/admin management views.</p>
+	 *
+	 * @return rows of [threadName, createdBy, createdAt, archived, postCount]
+	 */
+	public ArrayList<ArrayList<String>> getThreadInventory() {
+		ArrayList<ArrayList<String>> inventory = new ArrayList<>();
+		String query =
+				"SELECT t.threadName, t.createdBy, t.createdAt, t.isArchived, " +
+				"(SELECT COUNT(*) FROM postsDB p WHERE p.threadName = t.threadName) AS postCount " +
+				"FROM threadsDB t " +
+				"ORDER BY CASE WHEN t.threadName = 'General' THEN 0 ELSE 1 END, t.threadName ASC";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			ResultSet rs = pstmt.executeQuery();
+			while (rs.next()) {
+				ArrayList<String> row = new ArrayList<>();
+				row.add(rs.getString("threadName"));
+				row.add(rs.getString("createdBy"));
+				Timestamp createdAt = rs.getTimestamp("createdAt");
+				row.add(createdAt == null ? "" : createdAt.toString());
+				row.add(String.valueOf(rs.getBoolean("isArchived")));
+				row.add(String.valueOf(rs.getInt("postCount")));
+				inventory.add(row);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return inventory;
+	}
+
+	private int getThreadPostCount(String threadName) {
+		String query = "SELECT COUNT(*) AS count FROM postsDB WHERE threadName = ?";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			pstmt.setString(1, threadName);
+			ResultSet rs = pstmt.executeQuery();
+			if (rs.next()) {
+				return rs.getInt("count");
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return 0;
 	}
 
 	/*******
@@ -1711,27 +1901,6 @@ public class Database {
 	    }
 	}
 	/*******
-	 * <p> Method: void createPrivateFeedback(PrivateFeedback feedback) </p>
-	 * 
-	 * <p> Description: Inserts a new private feedback entry into the privateFeedbackDB table.</p>
-	 * 
-	 * @param feedback the PrivateFeedback object to insert
-	 */
-	public void createPrivateFeedback(PrivateFeedback feedback) {
-	    String query = "INSERT INTO privateFeedbackDB (postId, senderUsername, recipientUsername, message) VALUES (?, ?, ?, ?)";
-
-	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-	        pstmt.setInt(1, feedback.getPostId());
-	        pstmt.setString(2, feedback.getSenderUsername());
-	        pstmt.setString(3, feedback.getRecipientUsername());
-	        pstmt.setString(4, feedback.getMessage());
-	        pstmt.executeUpdate();
-	    } catch (SQLException e) {
-	        e.printStackTrace();
-	    }
-	}
-	
-	/*******
 	 * <p> Method: List&lt;PrivateFeedback&gt; getFeedbackForRecipient(String recipientUsername) </p>
 	 * 
 	 * <p> Description: Retrieves all private feedback messages for a specific recipient ordered by timestamp descending.</p>
@@ -1742,7 +1911,8 @@ public class Database {
 	public List<PrivateFeedback> getFeedbackForRecipient(String recipientUsername) {
 	    List<PrivateFeedback> feedbackList = new ArrayList<>();
 
-	    String query = "SELECT * FROM privateFeedbackDB WHERE recipientUsername = ? ORDER BY timestamp DESC";
+	    String query = "SELECT * FROM privateFeedbackDB WHERE studentUsername = ? "
+	    		+ "AND isArchived = FALSE ORDER BY createdAt DESC";
 
 	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
 	        pstmt.setString(1, recipientUsername);
@@ -1751,11 +1921,14 @@ public class Database {
 	        while (rs.next()) {
 	            feedbackList.add(new PrivateFeedback(
 	                    rs.getInt("id"),
-	                    rs.getInt("postId"),
-	                    rs.getString("senderUsername"),
-	                    rs.getString("recipientUsername"),
-	                    rs.getString("message"),
-	                    rs.getTimestamp("timestamp")
+	                    rs.getString("targetType"),
+	                    rs.getInt("targetId"),
+	                    rs.getString("staffUsername"),
+	                    rs.getString("studentUsername"),
+	                    rs.getString("feedback"),
+	                    rs.getTimestamp("createdAt"),
+	                    rs.getTimestamp("updatedAt"),
+	                    rs.getBoolean("isArchived")
 	            ));
 	        }
 	    } catch (SQLException e) {
@@ -2217,5 +2390,814 @@ public List<Post> searchPosts(String keyword, String threadName) {
 
     return posts;
 }
+
+	// ========================================================================================
+	// Staff Review and Private Feedback Methods
+	// ========================================================================================
+
+	/**
+	 * Persists a private feedback record authored by staff.
+	 *
+	 * @param feedback private feedback payload
+	 * @return true when inserted successfully
+	 */
+	public boolean createPrivateFeedback(PrivateFeedback feedback) {
+		String query =
+				"INSERT INTO privateFeedbackDB " +
+				"(targetType, targetId, staffUsername, studentUsername, feedback) " +
+				"VALUES (?, ?, ?, ?, ?)";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			pstmt.setString(1, feedback.getTargetType());
+			pstmt.setInt(2, feedback.getTargetId());
+			pstmt.setString(3, feedback.getStaffUsername());
+			pstmt.setString(4, feedback.getStudentUsername());
+			pstmt.setString(5, feedback.getFeedback());
+			return pstmt.executeUpdate() == 1;
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	/**
+	 * Updates a private feedback record authored by the same staff member.
+	 *
+	 * @param feedbackId feedback id
+	 * @param staffUsername staff author username
+	 * @param newFeedback updated text
+	 * @return true when updated
+	 */
+	public boolean updatePrivateFeedback(int feedbackId, String staffUsername, String newFeedback) {
+		String query =
+				"UPDATE privateFeedbackDB SET feedback = ?, updatedAt = CURRENT_TIMESTAMP " +
+				"WHERE id = ? AND staffUsername = ? AND isArchived = FALSE";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			pstmt.setString(1, newFeedback);
+			pstmt.setInt(2, feedbackId);
+			pstmt.setString(3, staffUsername);
+			return pstmt.executeUpdate() == 1;
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	/**
+	 * Archives a private feedback record.
+	 *
+	 * @param feedbackId feedback id
+	 * @param staffUsername staff actor
+	 * @return true when archived
+	 */
+	public boolean archivePrivateFeedback(int feedbackId, String staffUsername) {
+		String query =
+				"UPDATE privateFeedbackDB SET isArchived = TRUE, updatedAt = CURRENT_TIMESTAMP " +
+				"WHERE id = ? AND staffUsername = ? AND isArchived = FALSE";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			pstmt.setInt(1, feedbackId);
+			pstmt.setString(2, staffUsername);
+			return pstmt.executeUpdate() == 1;
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	/**
+	 * Fetches private feedback visible to a student.
+	 *
+	 * @param studentUsername student username
+	 * @return matching feedback records
+	 */
+	public List<PrivateFeedback> getPrivateFeedbackForStudent(String studentUsername) {
+		List<PrivateFeedback> feedbackRows = new ArrayList<>();
+		String query =
+				"SELECT * FROM privateFeedbackDB " +
+				"WHERE studentUsername = ? AND isArchived = FALSE " +
+				"ORDER BY createdAt DESC";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			pstmt.setString(1, studentUsername);
+			ResultSet rs = pstmt.executeQuery();
+			while (rs.next()) {
+				feedbackRows.add(mapPrivateFeedbackRow(rs));
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return feedbackRows;
+	}
+
+	/**
+	 * Fetches private feedback linked to a specific content target.
+	 *
+	 * @param targetType target type (POST/REPLY)
+	 * @param targetId target id
+	 * @return matching feedback records
+	 */
+	public List<PrivateFeedback> getPrivateFeedbackForTarget(String targetType, int targetId) {
+		List<PrivateFeedback> feedbackRows = new ArrayList<>();
+		String query =
+				"SELECT * FROM privateFeedbackDB " +
+				"WHERE targetType = ? AND targetId = ? AND isArchived = FALSE " +
+				"ORDER BY createdAt DESC";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			pstmt.setString(1, targetType);
+			pstmt.setInt(2, targetId);
+			ResultSet rs = pstmt.executeQuery();
+			while (rs.next()) {
+				feedbackRows.add(mapPrivateFeedbackRow(rs));
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return feedbackRows;
+	}
+
+	// ========================================================================================
+	// Content Moderation Flag Methods
+	// ========================================================================================
+
+	/**
+	 * Creates a content moderation flag.
+	 *
+	 * @param flag moderation flag payload
+	 * @return true when inserted
+	 */
+	public boolean createContentFlag(ContentFlag flag) {
+		String query =
+				"INSERT INTO contentFlagsDB " +
+				"(contentType, contentId, flaggedBy, reasonCode, details, status) " +
+				"VALUES (?, ?, ?, ?, ?, ?)";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			pstmt.setString(1, flag.getContentType());
+			pstmt.setInt(2, flag.getContentId());
+			pstmt.setString(3, flag.getFlaggedBy());
+			pstmt.setString(4, flag.getReasonCode());
+			pstmt.setString(5, flag.getDetails());
+			pstmt.setString(6, flag.getStatus());
+			return pstmt.executeUpdate() == 1;
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	/**
+	 * Lists content flags for a given status.
+	 *
+	 * @param status status filter
+	 * @return matching flags
+	 */
+	public List<ContentFlag> getContentFlagsByStatus(String status) {
+		List<ContentFlag> flags = new ArrayList<>();
+		String query = "SELECT * FROM contentFlagsDB WHERE status = ? ORDER BY createdAt DESC";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			pstmt.setString(1, status);
+			ResultSet rs = pstmt.executeQuery();
+			while (rs.next()) {
+				flags.add(mapContentFlagRow(rs));
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return flags;
+	}
+
+	/**
+	 * Lists all flags for a specific content item.
+	 *
+	 * @param contentType content type
+	 * @param contentId content id
+	 * @return matching flags
+	 */
+	public List<ContentFlag> getContentFlagsForContent(String contentType, int contentId) {
+		List<ContentFlag> flags = new ArrayList<>();
+		String query =
+				"SELECT * FROM contentFlagsDB WHERE contentType = ? AND contentId = ? " +
+				"ORDER BY createdAt DESC";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			pstmt.setString(1, contentType);
+			pstmt.setInt(2, contentId);
+			ResultSet rs = pstmt.executeQuery();
+			while (rs.next()) {
+				flags.add(mapContentFlagRow(rs));
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return flags;
+	}
+
+	/**
+	 * Updates moderation status and resolution details for a flag.
+	 *
+	 * @param flagId flag id
+	 * @param newStatus target status
+	 * @param resolverUsername actor handling the flag
+	 * @param resolutionNote optional note
+	 * @return true when updated
+	 */
+	public boolean updateContentFlagStatus(int flagId, String newStatus, String resolverUsername,
+			String resolutionNote) {
+		String query =
+				"UPDATE contentFlagsDB SET status = ?, resolvedAt = CURRENT_TIMESTAMP, " +
+				"resolvedBy = ?, resolutionNote = ? WHERE id = ?";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			pstmt.setString(1, newStatus);
+			pstmt.setString(2, resolverUsername);
+			pstmt.setString(3, resolutionNote);
+			pstmt.setInt(4, flagId);
+			return pstmt.executeUpdate() == 1;
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	// ========================================================================================
+	// Evaluation Parameter Methods
+	// ========================================================================================
+
+	/**
+	 * Creates a new evaluation parameter.
+	 *
+	 * @param parameter parameter payload
+	 * @return true when inserted
+	 */
+	public boolean createEvaluationParameter(EvaluationParameter parameter) {
+		String query =
+				"INSERT INTO evaluationParametersDB " +
+				"(name, description, maxPoints, isActive, createdBy) " +
+				"VALUES (?, ?, ?, ?, ?)";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			pstmt.setString(1, parameter.getName());
+			pstmt.setString(2, parameter.getDescription());
+			pstmt.setInt(3, parameter.getMaxPoints());
+			pstmt.setBoolean(4, parameter.isActive());
+			pstmt.setString(5, parameter.getCreatedBy());
+			return pstmt.executeUpdate() == 1;
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	/**
+	 * Returns all evaluation parameters.
+	 *
+	 * @return parameter rows ordered by name
+	 */
+	public List<EvaluationParameter> getAllEvaluationParameters() {
+		List<EvaluationParameter> parameters = new ArrayList<>();
+		String query = "SELECT * FROM evaluationParametersDB ORDER BY name ASC";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			ResultSet rs = pstmt.executeQuery();
+			while (rs.next()) {
+				parameters.add(mapEvaluationParameterRow(rs));
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return parameters;
+	}
+
+	/**
+	 * Updates an evaluation parameter by id.
+	 *
+	 * @param parameter parameter payload containing id
+	 * @return true when updated
+	 */
+	public boolean updateEvaluationParameter(EvaluationParameter parameter) {
+		String query =
+				"UPDATE evaluationParametersDB SET name = ?, description = ?, maxPoints = ?, " +
+				"isActive = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			pstmt.setString(1, parameter.getName());
+			pstmt.setString(2, parameter.getDescription());
+			pstmt.setInt(3, parameter.getMaxPoints());
+			pstmt.setBoolean(4, parameter.isActive());
+			pstmt.setInt(5, parameter.getId());
+			return pstmt.executeUpdate() == 1;
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	/**
+	 * Soft deletes an evaluation parameter by marking it inactive.
+	 *
+	 * @param parameterId parameter id
+	 * @return true when updated
+	 */
+	public boolean deleteEvaluationParameter(int parameterId) {
+		String query =
+				"UPDATE evaluationParametersDB SET isActive = FALSE, updatedAt = CURRENT_TIMESTAMP " +
+				"WHERE id = ? AND isActive = TRUE";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			pstmt.setInt(1, parameterId);
+			return pstmt.executeUpdate() == 1;
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	/**
+	 * Reactivates an evaluation parameter.
+	 *
+	 * @param parameterId parameter id
+	 * @return true when updated
+	 */
+	public boolean reactivateEvaluationParameter(int parameterId) {
+		String query =
+				"UPDATE evaluationParametersDB SET isActive = TRUE, updatedAt = CURRENT_TIMESTAMP " +
+				"WHERE id = ?";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			pstmt.setInt(1, parameterId);
+			return pstmt.executeUpdate() == 1;
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	// ========================================================================================
+	// Evaluation Methods
+	// ========================================================================================
+
+	/**
+	 * Creates an evaluation linked to a post.
+	 *
+	 * @param evaluation evaluation payload
+	 * @return true when inserted
+	 */
+	public boolean createEvaluation(Evaluation evaluation) {
+		Post post = getPostById(evaluation.getPostId());
+		if (post == null || post.isDeleted()) {
+			return false;
+		}
+
+		String query =
+				"INSERT INTO evaluationsDB " +
+				"(postId, evaluatorUsername, studentUsername, parameterScoresJson, totalScore, feedback) " +
+				"VALUES (?, ?, ?, ?, ?, ?)";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			pstmt.setInt(1, evaluation.getPostId());
+			pstmt.setString(2, evaluation.getEvaluatorUsername());
+			if (evaluation.getStudentUsername() == null || evaluation.getStudentUsername().isBlank()) {
+				pstmt.setString(3, post.getAuthorUsername());
+			} else {
+				pstmt.setString(3, evaluation.getStudentUsername());
+			}
+			pstmt.setString(4, evaluation.getParameterScoresJson());
+			pstmt.setDouble(5, evaluation.getTotalScore());
+			pstmt.setString(6, evaluation.getFeedback());
+			return pstmt.executeUpdate() == 1;
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	/**
+	 * Returns all evaluations linked to a post.
+	 *
+	 * @param postId post id
+	 * @return evaluations ordered by latest first
+	 */
+	public List<Evaluation> getEvaluationsForPost(int postId) {
+		List<Evaluation> evaluations = new ArrayList<>();
+		String query = "SELECT * FROM evaluationsDB WHERE postId = ? ORDER BY createdAt DESC";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			pstmt.setInt(1, postId);
+			ResultSet rs = pstmt.executeQuery();
+			while (rs.next()) {
+				evaluations.add(mapEvaluationRow(rs));
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return evaluations;
+	}
+
+	/**
+	 * Returns all evaluations for a student.
+	 *
+	 * @param studentUsername student username
+	 * @return evaluations ordered by latest first
+	 */
+	public List<Evaluation> getEvaluationsForStudent(String studentUsername) {
+		List<Evaluation> evaluations = new ArrayList<>();
+		String query =
+				"SELECT * FROM evaluationsDB WHERE studentUsername = ? ORDER BY createdAt DESC";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			pstmt.setString(1, studentUsername);
+			ResultSet rs = pstmt.executeQuery();
+			while (rs.next()) {
+				evaluations.add(mapEvaluationRow(rs));
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return evaluations;
+	}
+
+	/**
+	 * Computes average total score for a student.
+	 *
+	 * @param studentUsername student username
+	 * @return average score or null when no evaluations exist
+	 */
+	public Double getAverageEvaluationScoreForStudent(String studentUsername) {
+		String query = "SELECT AVG(totalScore) AS avgScore FROM evaluationsDB WHERE studentUsername = ?";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			pstmt.setString(1, studentUsername);
+			ResultSet rs = pstmt.executeQuery();
+			if (rs.next()) {
+				double average = rs.getDouble("avgScore");
+				if (rs.wasNull()) {
+					return null;
+				}
+				return average;
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	// ========================================================================================
+	// Admin Request Workflow Methods
+	// ========================================================================================
+
+	/**
+	 * Creates an admin request.
+	 *
+	 * @param request request payload
+	 * @return inserted request id, or -1 when failed
+	 */
+	public int createAdminRequest(AdminRequest request) {
+		String normalizedStatus = normalizeAdminRequestStatus(request.getStatus());
+		if (normalizedStatus == null) {
+			normalizedStatus = "OPEN";
+		}
+
+		String query =
+				"INSERT INTO adminRequestsDB " +
+				"(requesterUsername, title, description, status, assigneeUsername, actionNotes, originalRequestId) " +
+				"VALUES (?, ?, ?, ?, ?, ?, ?)";
+
+		try (PreparedStatement pstmt = connection.prepareStatement(query,
+					Statement.RETURN_GENERATED_KEYS)) {
+			pstmt.setString(1, request.getRequesterUsername());
+			pstmt.setString(2, request.getTitle());
+			pstmt.setString(3, request.getDescription());
+			pstmt.setString(4, normalizedStatus);
+			pstmt.setString(5, request.getAssigneeUsername());
+			pstmt.setString(6, request.getActionNotes());
+			if (request.getOriginalRequestId() == null) {
+				pstmt.setNull(7, Types.INTEGER);
+			} else {
+				pstmt.setInt(7, request.getOriginalRequestId());
+			}
+			int rows = pstmt.executeUpdate();
+			if (rows != 1) return -1;
+
+			ResultSet keys = pstmt.getGeneratedKeys();
+			if (keys.next()) {
+				return keys.getInt(1);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return -1;
+	}
+
+	/**
+	 * Returns all admin requests ordered by most recent first.
+	 *
+	 * @return request rows
+	 */
+	public List<AdminRequest> getAllAdminRequests() {
+		List<AdminRequest> requests = new ArrayList<>();
+		String query = "SELECT * FROM adminRequestsDB ORDER BY createdAt DESC";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			ResultSet rs = pstmt.executeQuery();
+			while (rs.next()) {
+				requests.add(mapAdminRequestRow(rs));
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return requests;
+	}
+
+	/**
+	 * Returns all admin requests created by a requester.
+	 *
+	 * @param requesterUsername requester username
+	 * @return request rows
+	 */
+	public List<AdminRequest> getAdminRequestsForRequester(String requesterUsername) {
+		List<AdminRequest> requests = new ArrayList<>();
+		String query =
+				"SELECT * FROM adminRequestsDB WHERE requesterUsername = ? ORDER BY createdAt DESC";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			pstmt.setString(1, requesterUsername);
+			ResultSet rs = pstmt.executeQuery();
+			while (rs.next()) {
+				requests.add(mapAdminRequestRow(rs));
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return requests;
+	}
+
+	/**
+	 * Returns all admin requests assigned to a user.
+	 *
+	 * @param assigneeUsername assignee username
+	 * @return request rows
+	 */
+	public List<AdminRequest> getAdminRequestsForAssignee(String assigneeUsername) {
+		List<AdminRequest> requests = new ArrayList<>();
+		String query =
+				"SELECT * FROM adminRequestsDB WHERE assigneeUsername = ? ORDER BY createdAt DESC";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			pstmt.setString(1, assigneeUsername);
+			ResultSet rs = pstmt.executeQuery();
+			while (rs.next()) {
+				requests.add(mapAdminRequestRow(rs));
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return requests;
+	}
+
+	/**
+	 * Updates admin request state using workflow guardrails.
+	 *
+	 * @param requestId request id
+	 * @param newStatus desired status
+	 * @param actorUsername actor performing the transition
+	 * @param actionNotes optional latest notes
+	 * @return true when status transition succeeds
+	 */
+	public boolean updateAdminRequestStatus(int requestId, String newStatus, String actorUsername,
+			String actionNotes) {
+		String normalizedTargetStatus = normalizeAdminRequestStatus(newStatus);
+		if (normalizedTargetStatus == null) {
+			return false;
+		}
+
+		String currentStatusQuery = "SELECT status FROM adminRequestsDB WHERE id = ?";
+		String currentStatus;
+		try (PreparedStatement currentStmt = connection.prepareStatement(currentStatusQuery)) {
+			currentStmt.setInt(1, requestId);
+			ResultSet rs = currentStmt.executeQuery();
+			if (!rs.next()) {
+				return false;
+			}
+			currentStatus = normalizeAdminRequestStatus(rs.getString("status"));
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return false;
+		}
+
+		if (!isValidAdminRequestTransition(currentStatus, normalizedTargetStatus)) {
+			return false;
+		}
+
+		String query =
+				"UPDATE adminRequestsDB SET status = ?, actionNotes = ?, updatedAt = CURRENT_TIMESTAMP, " +
+				"closedAt = ?, closedBy = ? WHERE id = ?";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			pstmt.setString(1, normalizedTargetStatus);
+			pstmt.setString(2, actionNotes);
+			if ("CLOSED".equals(normalizedTargetStatus)) {
+				pstmt.setTimestamp(3, new Timestamp(System.currentTimeMillis()));
+				pstmt.setString(4, actorUsername);
+			} else {
+				pstmt.setNull(3, Types.TIMESTAMP);
+				pstmt.setNull(4, Types.VARCHAR);
+			}
+			pstmt.setInt(5, requestId);
+			return pstmt.executeUpdate() == 1;
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	/**
+	 * Reopens a closed request by creating a linked request record.
+	 *
+	 * @param closedRequestId original closed request id
+	 * @param requesterUsername requester creating the reopened request
+	 * @param title optional new title
+	 * @param description optional new description
+	 * @return new request id or -1 when failed
+	 */
+	public int reopenAdminRequest(int closedRequestId, String requesterUsername, String title,
+			String description) {
+		String query =
+				"SELECT title, description, status FROM adminRequestsDB WHERE id = ?";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			pstmt.setInt(1, closedRequestId);
+			ResultSet rs = pstmt.executeQuery();
+			if (!rs.next()) {
+				return -1;
+			}
+
+			String currentStatus = normalizeAdminRequestStatus(rs.getString("status"));
+			if (!"CLOSED".equals(currentStatus)) {
+				return -1;
+			}
+
+			AdminRequest reopened = new AdminRequest();
+			reopened.setRequesterUsername(requesterUsername);
+			reopened.setStatus("REOPENED");
+			reopened.setOriginalRequestId(closedRequestId);
+			reopened.setTitle((title == null || title.isBlank())
+					? rs.getString("title")
+					: title);
+			reopened.setDescription((description == null || description.isBlank())
+					? rs.getString("description")
+					: description);
+			return createAdminRequest(reopened);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return -1;
+	}
+
+	/**
+	 * Normalizes admin request status strings to canonical workflow tokens.
+	 *
+	 * @param status raw status text
+	 * @return normalized status token, or null when invalid
+	 */
+	private String normalizeAdminRequestStatus(String status) {
+		if (status == null) {
+			return null;
+		}
+		String normalized = status.trim().toUpperCase().replace('-', '_').replace(' ', '_');
+		if ("OPEN".equals(normalized)
+				|| "IN_PROGRESS".equals(normalized)
+				|| "CLOSED".equals(normalized)
+				|| "REOPENED".equals(normalized)) {
+			return normalized;
+		}
+		return null;
+	}
+
+	/**
+	 * Validates whether a workflow transition is allowed.
+	 *
+	 * @param currentStatus current normalized status
+	 * @param targetStatus target normalized status
+	 * @return true when the transition is allowed by policy
+	 */
+	private boolean isValidAdminRequestTransition(String currentStatus, String targetStatus) {
+		if (currentStatus == null || targetStatus == null) {
+			return false;
+		}
+
+		if (currentStatus.equals(targetStatus)) {
+			return true;
+		}
+
+		if ("OPEN".equals(currentStatus)) {
+			return "IN_PROGRESS".equals(targetStatus) || "CLOSED".equals(targetStatus);
+		}
+		if ("IN_PROGRESS".equals(currentStatus)) {
+			return "CLOSED".equals(targetStatus);
+		}
+		if ("CLOSED".equals(currentStatus)) {
+			return "REOPENED".equals(targetStatus);
+		}
+		if ("REOPENED".equals(currentStatus)) {
+			return "IN_PROGRESS".equals(targetStatus) || "CLOSED".equals(targetStatus);
+		}
+		return false;
+	}
+
+	/**
+	 * Maps one private feedback result row to a domain object.
+	 *
+	 * @param rs active result set row
+	 * @return mapped private feedback object
+	 * @throws SQLException when row extraction fails
+	 */
+	private PrivateFeedback mapPrivateFeedbackRow(ResultSet rs) throws SQLException {
+		return new PrivateFeedback(
+			rs.getInt("id"),
+			rs.getString("targetType"),
+			rs.getInt("targetId"),
+			rs.getString("staffUsername"),
+			rs.getString("studentUsername"),
+			rs.getString("feedback"),
+			rs.getTimestamp("createdAt"),
+			rs.getTimestamp("updatedAt"),
+			rs.getBoolean("isArchived")
+		);
+	}
+
+	/**
+	 * Maps one content flag result row to a domain object.
+	 *
+	 * @param rs active result set row
+	 * @return mapped content flag object
+	 * @throws SQLException when row extraction fails
+	 */
+	private ContentFlag mapContentFlagRow(ResultSet rs) throws SQLException {
+		return new ContentFlag(
+			rs.getInt("id"),
+			rs.getString("contentType"),
+			rs.getInt("contentId"),
+			rs.getString("flaggedBy"),
+			rs.getString("reasonCode"),
+			rs.getString("details"),
+			rs.getString("status"),
+			rs.getTimestamp("createdAt"),
+			rs.getTimestamp("resolvedAt"),
+			rs.getString("resolvedBy"),
+			rs.getString("resolutionNote")
+		);
+	}
+
+	/**
+	 * Maps one evaluation parameter result row to a domain object.
+	 *
+	 * @param rs active result set row
+	 * @return mapped evaluation parameter object
+	 * @throws SQLException when row extraction fails
+	 */
+	private EvaluationParameter mapEvaluationParameterRow(ResultSet rs) throws SQLException {
+		return new EvaluationParameter(
+			rs.getInt("id"),
+			rs.getString("name"),
+			rs.getString("description"),
+			rs.getInt("maxPoints"),
+			rs.getBoolean("isActive"),
+			rs.getString("createdBy"),
+			rs.getTimestamp("createdAt"),
+			rs.getTimestamp("updatedAt")
+		);
+	}
+
+	/**
+	 * Maps one evaluation result row to a domain object.
+	 *
+	 * @param rs active result set row
+	 * @return mapped evaluation object
+	 * @throws SQLException when row extraction fails
+	 */
+	private Evaluation mapEvaluationRow(ResultSet rs) throws SQLException {
+		return new Evaluation(
+			rs.getInt("id"),
+			rs.getInt("postId"),
+			rs.getString("evaluatorUsername"),
+			rs.getString("studentUsername"),
+			rs.getString("parameterScoresJson"),
+			rs.getDouble("totalScore"),
+			rs.getString("feedback"),
+			rs.getTimestamp("createdAt"),
+			rs.getTimestamp("updatedAt")
+		);
+	}
+
+	/**
+	 * Maps one admin request result row to a domain object.
+	 *
+	 * @param rs active result set row
+	 * @return mapped admin request object
+	 * @throws SQLException when row extraction fails
+	 */
+	private AdminRequest mapAdminRequestRow(ResultSet rs) throws SQLException {
+		Integer originalRequestId = null;
+		int rawOriginalId = rs.getInt("originalRequestId");
+		if (!rs.wasNull()) {
+			originalRequestId = rawOriginalId;
+		}
+
+		return new AdminRequest(
+			rs.getInt("id"),
+			rs.getString("requesterUsername"),
+			rs.getString("title"),
+			rs.getString("description"),
+			rs.getString("status"),
+			rs.getString("assigneeUsername"),
+			rs.getString("actionNotes"),
+			originalRequestId,
+			rs.getTimestamp("createdAt"),
+			rs.getTimestamp("updatedAt"),
+			rs.getTimestamp("closedAt"),
+			rs.getString("closedBy")
+		);
+	}
 
 }
